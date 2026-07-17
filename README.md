@@ -9,17 +9,9 @@
 **支持特性：Android 16 / API 36 / BP2A / Virtual A/B 分区**
 
 ## English Overview
-TWRP device trees and source patches for devices powered by the **Qualcomm Snapdragon 8 Elite Gen 5 (SM8850 / canoe)** platform, targeting **Android 16 (API 36, BP2A)** with **Virtual A/B** partitions.
+**[Full English documentation → README_EN.md](./README_EN.md)**
 
-Supported devices:
-- **Xiaomi Redmi K90** (annibale)
-- **Xiaomi Redmi K90 Pro Max** (myron)
-- **Xiaomi 17 Ultra** (nezha)
-- **realme Neo8** (RE6402L1)
-
-Key features: FBE (file-based encryption) data decryption, Weaver/Keymaster/KeyMint support, dynamic partition flashing, TWRP auto-restore after ROM flash, in-recovery Wi-Fi (myron/Neo8), and fixes for ST54 secure-element crashes on nezha. Other SM8850 devices can be requested via Issues.
-
-Keywords: TWRP, custom recovery, device tree, SM8850, Snapdragon 8 Elite Gen 5, Android 16, FBE decrypt, Virtual A/B, Redmi K90, Redmi K90 Pro Max, Xiaomi 17 Ultra, realme Neo8.
+TWRP device trees and source patches for the **Qualcomm Snapdragon 8 Elite Gen 5 (SM8850 / canoe)** platform, targeting **Android 16 (API 36, BP2A)** with **Virtual A/B** partitions. Supported: **Redmi K90** (annibale), **Redmi K90 Pro Max** (myron), **Xiaomi 17 Ultra** (nezha), **realme Neo8** (RE6402L1). Features FBE data decryption, Weaver/Keymaster/KeyMint support, and TWRP auto-restore after ROM flash.
 
 ## 支持设备（Supported Devices）
 | Vendor | Device | Codename | Status |
@@ -128,4 +120,4 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 - 高通提供QCOM内核与设备树开源资源
 
 ## 协议（License）
-各设备树与源码文件遵循其原有开源协议。
+各设备树与源码文件遵循其原有开源协议。本仓库原创内容采用 [Apache-2.0](./LICENSE) 协议。
