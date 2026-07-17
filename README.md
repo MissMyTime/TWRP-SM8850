@@ -21,6 +21,12 @@ TWRP device trees and source patches for the **Qualcomm Snapdragon 8 Elite Gen 5
 | Xiaomi | Xiaomi 17 Ultra | nezha | Supported |
 | realme | realme Neo8 | RE6402L1 | Supported |
 
+## 讨论区（Discussion）
+- XDA: [TWRP for POCO F8 Ultra / Redmi K90 Pro Max (myron)](https://xdaforums.com/t/twrp-3-7-1-for-poco-f8-ultra-redmi-k90-pro-max-myron-android-16-fbe-decrypt.4795272/)
+- XDA: [TWRP for Xiaomi 17 Ultra (nezha)](https://xdaforums.com/t/twrp-3-7-1-for-xiaomi-17-ultra-nezha-android-16-fbe-decrypt.4795275/)
+- XDA: [TWRP for realme Neo8 (RE6402L1)](https://xdaforums.com/t/twrp-3-7-1-for-realme-neo8-re6402l1-android-16-fbe-decrypt.4795276/)
+- 4PDA: [Realme Neo 8 讨论帖](https://4pda.to/forum/index.php?showtopic=1109949)
+
 ## 仓库结构（Repository Layout）
 ```
 twrp_device_sm8850/
