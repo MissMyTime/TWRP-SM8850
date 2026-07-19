@@ -40,17 +40,20 @@ twrp_device_sm8850/
 │   │   └── nezha/                     # Xiaomi 17 Ultra
 │   └── realme/
 │       └── RE6402L1/                  # realme Neo8
-├── source_changes/                    # TWRP source patches
-│   ├── files/                         # Full patched source files
-│   │   ├── bootable/recovery/...
-│   │   └── system/vold/...
-│   └── patches/                       # Git-format patches for upstream tracking
-│       ├── bootable_recovery/
-│       └── system_vold/
+├── patches/                           # TWRP source patches (grouped by scope)
+│   ├── common/                        # All devices: recovery framework + Weaver retry
+│   │   ├── files/                     # Full patched source files
+│   │   └── patches/                   # Git-format patches for upstream tracking
+│   ├── myron/                         # Redmi K90 Pro Max only (no vold patch, see README inside)
+│   ├── annibale/                      # Redmi K90 only (no vold patch, see README inside)
+│   ├── nezha/                         # Xiaomi 17 Ultra only: KeyMint environment patch
+│   └── neo8/                          # realme Neo8 only: KeyMint environment patch
 └── scripts/
-    ├── apply-patches.sh               # One-click patch apply
+    ├── apply-patches.sh               # One-click patch apply (common + one device)
     └── build.sh                       # Unified build entry
 ```
+
+Why patches are grouped by scope: the four devices use different secure-element stacks. myron/annibale use NXP KeyMint, whose environment comes from vendor properties, so stock vold is fine. On nezha (Thales/Goodix stack) and neo8 (QCOM TMS/SPU + OPlus weaver stack) the KeyMint environment comes from build properties and gets polluted by the recovery's spoofed platform version, so each needs its own environment-pinning patch. The sets are strictly isolated — a build applies `common` plus only the target device's own directory, so they never contaminate each other.
 
 ## Quick Start
 ### 1. Clone this repo next to your TWRP source tree
@@ -59,9 +62,10 @@ cd ~/android/twrp
 git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 ```
 ### 2. Apply the source patches
+The second argument is the device codename (myron / annibale / nezha / RE6402L1). The script applies `patches/common` first, then that device's own patch directory:
 ```bash
 cd ~/android/twrp
-twrp_device_sm8850/scripts/apply-patches.sh .
+twrp_device_sm8850/scripts/apply-patches.sh . myron
 ```
 ### 3. Build recovery for a device
 ```bash
@@ -84,7 +88,7 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 
 ## Source Changes Summary
 See [docs/PATCHES.md](docs/PATCHES.md) for details.
-### bootable/recovery
+### bootable/recovery (patches/common)
 - **Slot detection fix** (`twinstall.cpp`): correct Virtual A/B slot detection to avoid flashing the wrong slot
 - **Auto re-flash TWRP** (`action.cpp`): back up recovery before a ROM flash and restore it to both slots afterwards, so stock ROMs don't overwrite TWRP
 - **Clear bootloader messages** (`twrp-functions.cpp`): clear stale bootloader error messages before reboot to avoid boot hangs
@@ -95,9 +99,9 @@ See [docs/PATCHES.md](docs/PATCHES.md) for details.
 - **ST54 null-pointer crash fix** (`partition.cpp`, `gui.cpp`): fix crash when initializing the ST54 secure element on Xiaomi 17 Ultra (nezha)
 - **SELog suppression**: silence SELinux denials from ST54 DAC access during recovery boot (avoids hanging on the splash screen)
 ### system/vold
-- **FBE/Weaver compatibility**: Android 16 file-based encryption with Weaver/Keymaster decryption
-- **ST54 keystore safety patch** (`KeyStorage.cpp`, `Decrypt.cpp`): null checks for ST54 weaver key access, fixing decryption failure on nezha
-- **Thales weaver support**: adapt to the Thales StrongBox keymint/weaver service used by Xiaomi SM8850 nezha
+- **FBE/Weaver compatibility** (`Weaver1.cpp`, patches/common): Android 16 file-based encryption with Weaver/Keymaster decryption
+- **KeyMint environment patch** (`Decrypt.cpp`, `KeyStorage.cpp`; maintained separately under patches/neo8 and patches/nezha): pins the KeyMint environment (OS version / patch levels) to the installed system's real values before decryption, so the recovery's spoofed platform version is not treated as a newer environment that triggers key upgrades; includes `KM_TAG_FBE_ICE` for QTI wrapped keys and recovery-side upgrade write-back protection
+- **No vold patch for myron/annibale**: both NXP KeyMint devices take their environment from vendor properties, so the recovery's spoofed version never reaches KeyMint; stock vold + Weaver1.cpp is the verified stable combination
 
 ## Device-specific Notes
 Each device has its own document under `docs/` covering:
@@ -110,7 +114,7 @@ Each device has its own document under `docs/` covering:
 PRs for new device adaptations are welcome:
 1. Add a complete device tree under `device/<vendor>/<codename>/`
 2. Add the corresponding device document under `docs/`
-3. Submit any new source changes to `source_changes/`
+3. For new source changes: common changes go to `patches/common/`, device-specific changes go to `patches/<device>/` with the reason documented in that directory's README
 4. Update the supported device list in the README
 
 ## Thanks

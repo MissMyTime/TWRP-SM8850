@@ -51,7 +51,7 @@ echo "========================================"
 echo ""
 
 # Apply source changes
-"$SCRIPT_DIR/apply-patches.sh" "$REPO_ROOT"
+"$SCRIPT_DIR/apply-patches.sh" "$REPO_ROOT" "$CODENAME"
 
 # Build
 cd "$REPO_ROOT"

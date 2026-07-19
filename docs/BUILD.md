@@ -27,19 +27,22 @@ repo sync -c --no-tags --no-clone-bundle -j$(nproc)
 
 ```bash
 cd ~/android/twrp
-git clone https://github.com/MissMyTime/TWRP-SM8850.git
+git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 ```
 
 ## Apply Source Changes
 
 ```bash
 cd ~/android/twrp
-TWRP-SM8850/scripts/apply-patches.sh .
+twrp_device_sm8850/scripts/apply-patches.sh . <codename>
 ```
 
-This script will:
-1. Apply git patches from `source_changes/patches/`
-2. Copy modified source files from `source_changes/files/`
+The second argument is the device codename (`myron` / `annibale` / `nezha` / `RE6402L1`). The script will:
+
+1. Apply git patches from `patches/common/patches/`, then copy the full source files from `patches/common/files/`
+2. Do the same for `patches/<device>/` if that directory contains device-specific patches
+
+Only `nezha` and `neo8` carry device-specific vold patches today; `myron` and `annibale` intentionally use stock vold plus the common Weaver1.cpp (see each directory's README).
 
 ## Build
 

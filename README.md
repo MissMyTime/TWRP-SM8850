@@ -47,17 +47,20 @@ twrp_device_sm8850/
 │   │   └── nezha/                     # Xiaomi 17 Ultra 设备树
 │   └── realme/
 │       └── RE6402L1/                  # realme Neo8 设备树
-├── source_changes/                    # TWRP源码修改补丁
-│   ├── files/                         # 修改后完整源码文件
-│   │   ├── bootable/recovery/...
-│   │   └── system/vold/...
-│   └── patches/                       # Git格式补丁，方便上游跟踪
-│       ├── bootable_recovery/
-│       └── system_vold/
+├── patches/                           # TWRP源码修改补丁（按适用范围分类）
+│   ├── common/                        # 全机型通用：recovery框架 + Weaver重试
+│   │   ├── files/                     # 修改后完整源码文件
+│   │   └── patches/                   # Git格式补丁，方便上游跟踪
+│   ├── myron/                         # Redmi K90 Pro Max 专属（无vold补丁，见目录内说明）
+│   ├── annibale/                      # Redmi K90 专属（无vold补丁，见目录内说明）
+│   ├── nezha/                         # Xiaomi 17 Ultra 专属：KeyMint环境补丁
+│   └── neo8/                          # realme Neo8 专属：KeyMint环境补丁
 └── scripts/
-    ├── apply-patches.sh               # 一键应用源码补丁
+    ├── apply-patches.sh               # 一键应用源码补丁（common + 指定机型）
     └── build.sh                       # 统一编译入口脚本
 ```
+
+补丁按适用范围分类的原因：四台设备的安全芯片方案不同。myron/annibale 为 NXP KeyMint，环境值取自 vendor 属性，vold 保持原版即可；nezha（Thales/Goodix 栈）与 neo8（高通 TMS/SPU + OPlus weaver 栈）的 KeyMint 环境取自 build 属性，会被 recovery 伪装版本污染，各自需要专用的环境压制补丁。两类补丁严格隔离，编译时只应用 `common` + 目标机型自己的目录，互不污染。
 
 ## 快速开始（Quick Start）
 ### 1. 克隆本仓库到TWRP源码同级目录
@@ -66,9 +69,10 @@ cd ~/android/twrp
 git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 ```
 ### 2. 应用源码修改补丁
+第二个参数为机型代号（myron / annibale / nezha / RE6402L1），脚本会先应用 `patches/common`，再应用该机型自己的补丁目录：
 ```bash
 cd ~/android/twrp
-twrp_device_sm8850/scripts/apply-patches.sh .
+twrp_device_sm8850/scripts/apply-patches.sh . myron
 ```
 ### 3. 编译指定机型Recovery
 ```bash
@@ -91,7 +95,7 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 
 ## 源码修改说明（Source Changes Summary）
 详细补丁说明见 [docs/PATCHES.md](docs/PATCHES.md)
-### bootable/recovery 部分
+### bootable/recovery 部分（patches/common）
 - **槽位检测修复** (`twinstall.cpp`)：修正Virtual A/B分区槽位识别逻辑，避免刷入错分区
 - **自动重刷TWRP** (`action.cpp`)：刷入ROM前自动备份Recovery，刷完自动恢复到双槽位，避免TWRP被官方ROM覆盖
 - **清除Bootloader消息** (`twrp-functions.cpp`)：重启前自动清除bootloader错误消息，避免卡开机
@@ -102,9 +106,9 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 - **ST54空指针崩溃修复** (`partition.cpp`, `gui.cpp`)：修复小米17 Ultra（nezha）初始化ST54安全元件时的空指针崩溃
 - **SELog屏蔽**：屏蔽Recovery启动时ST54 DAC访问的SELinux拒绝日志，避免启动卡第一屏
 ### system/vold 部分
-- **FBE/Weaver兼容**：适配Android 16文件级加密与Weaver/Keymaster解密
-- **ST54密钥存储安全补丁** (`KeyStorage.cpp`, `Decrypt.cpp`)：增加ST54 weaver密钥访问空指针校验，修复nezha机型解密失败问题
-- **Thales weaver支持**：适配小米SM8850 nezha机型使用的Thales强box keymint/weaver服务
+- **FBE/Weaver兼容** (`Weaver1.cpp`，patches/common)：适配Android 16文件级加密与Weaver/Keymaster解密
+- **KeyMint环境补丁** (`Decrypt.cpp`, `KeyStorage.cpp`，patches/neo8 与 patches/nezha 各自独立维护)：解密前将KeyMint环境（OS版本/补丁级别）压制为已安装系统的真实值，避免recovery伪装版本被当成新环境触发密钥升级；包含QTI wrapped-key所需的`KM_TAG_FBE_ICE`与升级写回保护
+- **myron/annibale 不应用vold补丁**：两台NXP KeyMint机型的环境值取自vendor属性，recovery伪装版本不会进入KeyMint，原版vold + Weaver1.cpp即为已验证稳定组合
 
 ## 机型注意事项（Device-specific Notes）
 每个机型在`docs/`目录下有单独说明文档，包含：
@@ -117,7 +121,7 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 新增机型适配欢迎提交PR：
 1. 在`device/<厂商>/<机型代号>/`目录下提交完整设备树
 2. 在`docs/`目录下新增对应机型的说明文档
-3. 如有新的源码修改，提交到`source_changes/`目录
+3. 如有新的源码修改：全机型通用的提交到`patches/common/`，机型专属的提交到`patches/<机型>/`，并在对应目录的README说明原因
 4. 更新本README的支持设备列表
 
 ## 致谢（Thanks）
