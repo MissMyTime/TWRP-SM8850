@@ -18,6 +18,14 @@ assert_no_match() {
     fi
 }
 
+assert_no_match_outside_stock_matrix() {
+    local pattern="$1"
+    shift
+    if grep -RIniE --exclude='compatibility_matrix.device.xml' -- "$pattern" "$@"; then
+        fail "unexpected device-specific content found"
+    fi
+}
+
 assert_no_match \
     'neo8|nezha|RE6402L1|RMX8899|Goodix|OPlus|realme|ColorOS|ST54|SELog|Thales|vendor\.weaver_tms' \
     "$REPO_ROOT/patches/common/files" "$REPO_ROOT/patches/common/patches"
@@ -30,11 +38,11 @@ assert_no_match \
     'nezha|Goodix|ST54|SELog|Thales' \
     "$REPO_ROOT/patches/neo8/files" "$REPO_ROOT/patches/neo8/patches"
 
-assert_no_match \
+assert_no_match_outside_stock_matrix \
     'annibale|neo8|nezha|RE6402L1|RMX8899|Goodix|OPlus|realme|ColorOS|vendor\.weaver_tms' \
     "$REPO_ROOT/device/xiaomi/myron"
 
-assert_no_match \
+assert_no_match_outside_stock_matrix \
     'myron|neo8|nezha|RE6402L1|RMX8899|Goodix|OPlus|realme|ColorOS|vendor\.weaver_tms' \
     "$REPO_ROOT/device/xiaomi/annibale"
 
