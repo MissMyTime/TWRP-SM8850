@@ -39,9 +39,14 @@ apply_patch_files() {
         target="${dir/_//}"
         echo "  -> Applying: $(basename "$patch_file") to $target"
         if [ -d "$TWRP_SOURCE/$target" ]; then
-            (cd "$TWRP_SOURCE/$target" && git apply "$patch_file") || {
-                echo "     WARNING: patch may have already been applied or source differs."
-            }
+            if (cd "$TWRP_SOURCE/$target" && git apply --check "$patch_file"); then
+                (cd "$TWRP_SOURCE/$target" && git apply "$patch_file")
+            elif (cd "$TWRP_SOURCE/$target" && git apply --reverse --check "$patch_file"); then
+                echo "     Already applied."
+            else
+                echo "     ERROR: patch does not match the target source tree."
+                exit 1
+            fi
         else
             echo "     WARNING: target directory $TWRP_SOURCE/$target not found, skipping."
         fi
@@ -68,6 +73,12 @@ apply_set() {
     apply_files "$1"
     echo ""
 }
+
+# Reject unknown codenames instead of silently applying only the common set.
+if [ -n "$DEVICE" ] && [ -z "$(device_patch_dir "$DEVICE")" ]; then
+    echo "Error: unsupported device codename '$DEVICE'."
+    exit 1
+fi
 
 # 1. Common patches: applied for every device.
 apply_set "$REPO_ROOT/patches/common" "common (all devices)"

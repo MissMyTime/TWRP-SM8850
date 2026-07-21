@@ -106,7 +106,7 @@ using android::hardware::gatekeeper::V1_0::GatekeeperResponse;
 using GKResponse = ::android::service::gatekeeper::GateKeeperResponse;
 using GKResponseCode = ::android::service::gatekeeper::ResponseCode;
 
-static std::string readNeo8BuildProperty(const std::vector<std::string>& paths,
+static std::string readRecoveryBuildProperty(const std::vector<std::string>& paths,
 		const std::string& property_name) {
 	for (const auto& path : paths) {
 		std::string contents;
@@ -633,7 +633,7 @@ namespace keystore {
 		return false;
 	}
 
-	bool setNeo8KeyMintEnvironment(bool stock_environment) {
+	bool setRecoveryKeyMintEnvironment(bool stock_environment) {
 		const std::vector<std::string> system_props = {
 			"/system_root/system/build.prop",
 			"/system_root/build.prop",
@@ -648,17 +648,17 @@ namespace keystore {
 		// Always configure KeyMint with values from the installed stock ROM.
 		// A future patch level can make hardware-backed keys require an upgrade
 		// and leave the following Android boot unable to open those keys.
-		std::string os_version = android::base::GetProperty("twrp.neo8.osver", "");
+		std::string os_version = android::base::GetProperty("twrp.keymint.osver", "");
 		if (os_version.empty())
-			os_version = readNeo8BuildProperty(system_props, "ro.build.version.release");
+			os_version = readRecoveryBuildProperty(system_props, "ro.build.version.release");
 		if (os_version.empty())
 			os_version = android::base::GetProperty(
 				"ro.bootimage.build.version.release",
 				android::base::GetProperty("ro.build.version.release", "16"));
 
-		std::string os_patch = android::base::GetProperty("twrp.neo8.ospatch", "");
+		std::string os_patch = android::base::GetProperty("twrp.keymint.ospatch", "");
 		if (os_patch.empty())
-			os_patch = readNeo8BuildProperty(
+			os_patch = readRecoveryBuildProperty(
 				system_props, "ro.build.version.security_patch");
 		if (os_patch.empty())
 			os_patch = android::base::GetProperty(
@@ -670,9 +670,9 @@ namespace keystore {
 			return false;
 		}
 
-		std::string vendor_patch = android::base::GetProperty("twrp.neo8.venpatch", "");
+		std::string vendor_patch = android::base::GetProperty("twrp.keymint.venpatch", "");
 		if (vendor_patch.empty())
-			vendor_patch = readNeo8BuildProperty(
+			vendor_patch = readRecoveryBuildProperty(
 				vendor_props, "ro.vendor.build.security_patch");
 		if (vendor_patch.empty())
 			vendor_patch = android::base::GetProperty(
@@ -690,11 +690,11 @@ namespace keystore {
 		ALOGI("Neo8 KeyMint: using stock-derived values request=%s os=%s patch=%s vendor=%s",
 		      request_name, os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
 
-		property_set("twrp.nezha.keymint.request", request_name);
-		property_set("twrp.nezha.keymint.os_version", os_version.c_str());
-		property_set("twrp.nezha.keymint.os_patch", os_patch.c_str());
-		property_set("twrp.nezha.keymint.vendor_patch", vendor_patch.c_str());
-		property_set("twrp.nezha.keymint.ready", "0");
+		property_set("twrp.keymint.request", request_name);
+		property_set("twrp.keymint.os_version", os_version.c_str());
+		property_set("twrp.keymint.os_patch", os_patch.c_str());
+		property_set("twrp.keymint.vendor_patch", vendor_patch.c_str());
+		property_set("twrp.keymint.ready", "0");
 
 		property_set("ctl.stop", "keystore2");
 		property_set("ctl.stop", "vendor.keymint");
@@ -746,7 +746,7 @@ namespace keystore {
 				       os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
 				ALOGI("Neo8 KeyMint environment switch complete os=%s patch=%s vendor=%s",
 				      os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
-				property_set("twrp.nezha.keymint.ready", "1");
+				property_set("twrp.keymint.ready", "1");
 				return true;
 			}
 			usleep(100000);
@@ -1231,11 +1231,11 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 	// Plus we will include the last bit that computes the disk decrypt key found in:
 	// https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/SyntheticPasswordManager.java#153
 	const bool metadata_uses_stock =
-		android::base::GetProperty("twrp.neo8.metadata_env", "high") == "stock";
-	if (!android::keystore::setNeo8KeyMintEnvironment(true)) {
+		android::base::GetProperty("twrp.keymint.metadata_env", "recovery") == "stock";
+	if (!android::keystore::setRecoveryKeyMintEnvironment(true)) {
 		printf("failed to select stock KeyMint environment for synthetic password\n");
 		if (!metadata_uses_stock)
-			android::keystore::setNeo8KeyMintEnvironment(false);
+			android::keystore::setRecoveryKeyMintEnvironment(false);
 		return Free_Return(retval, weaver_key, &pwd);
 	}
 	secret = android::keystore::unwrapSyntheticPasswordBlob(spblob_path, handle_str, user_id, (const void*)&application_id[0],
@@ -1245,7 +1245,7 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 		printf("Neo8 synthetic password unwrap failed; attempting one KeyMint recovery retry\n");
 		bool retry_ready = true;
 		if (!metadata_uses_stock) {
-			retry_ready = android::keystore::setNeo8KeyMintEnvironment(false);
+			retry_ready = android::keystore::setRecoveryKeyMintEnvironment(false);
 			if (retry_ready) {
 				stock_environment_active = false;
 			} else {
@@ -1254,7 +1254,7 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 		}
 		if (retry_ready) {
 			usleep(500000);
-			retry_ready = android::keystore::setNeo8KeyMintEnvironment(true);
+			retry_ready = android::keystore::setRecoveryKeyMintEnvironment(true);
 			if (retry_ready) {
 				stock_environment_active = true;
 				printf("Neo8 KeyMint retry: retrying synthetic password unwrap\n");
@@ -1271,11 +1271,11 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 	if (!secret.size()) {
 		printf("failed to unwrapSyntheticPasswordBlob\n");
 		if (!metadata_uses_stock && stock_environment_active)
-			android::keystore::setNeo8KeyMintEnvironment(false);
+			android::keystore::setRecoveryKeyMintEnvironment(false);
 		return Free_Return(retval, weaver_key, &pwd);
 	}
 
-	if (!metadata_uses_stock && !android::keystore::setNeo8KeyMintEnvironment(false)) {
+	if (!metadata_uses_stock && !android::keystore::setRecoveryKeyMintEnvironment(false)) {
 		printf("failed to restore metadata/CE KeyMint environment\n");
 		return Free_Return(retval, weaver_key, &pwd);
 	}

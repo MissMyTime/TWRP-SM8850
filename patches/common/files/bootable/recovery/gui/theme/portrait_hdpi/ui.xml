@@ -6,7 +6,7 @@
 		<title>Backup Naowz</title>
 		<description>Default basic theme</description>
 		<preview>preview.png</preview>
-		<themeversion>6</themeversion>
+		<themeversion>{themeversion}</themeversion>
 	</details>
 
 	<include>
@@ -309,7 +309,7 @@
 			<image>
 				<condition var1="tw_wlan_connected" var2="1"/>
 				<image resource="wifi_status"/>
-				<placement x="742" y="22" w="42" h="42"/>
+				<placement x="724" y="%row1_header_y%" w="42" h="42"/>
 			</image>
 
 			<!-- Custom position for status bar items if defined START -->

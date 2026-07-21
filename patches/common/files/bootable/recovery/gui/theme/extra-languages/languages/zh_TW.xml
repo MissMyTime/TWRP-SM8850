@@ -508,7 +508,7 @@
 		<string name="decrypt_users_selection">選擇一位要解密的使用者 ID</string>
 		<string name="select_user">選擇使用者</string>
 		<string name="backup_storage_undecrypt_warning">備份不包含一些屬於使用者 {1} 的文件，因為該使用者沒有解密</string>
-		<string name="nezha_goodix_wait">正在等待 Goodix Weaver 穩定後再驗證密碼…</string>
+		<string name="recovery_hook_wait">正在等待裝置安全服務就緒…</string>
 		<string name="decrypting_user_fbe">嘗試為使用者 {1} 解密 FBE…</string>
 		<string name="decrypt_user_success_fbe">使用者 {1} 解密成功</string>
 		<string name="decrypt_user_fail_fbe">使用者 {1} 解密失敗</string>

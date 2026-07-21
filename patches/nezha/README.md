@@ -8,8 +8,8 @@
 
 本目录内容：
 
-- `files/system/vold/Decrypt.cpp`：KeyMint 环境压制与解密流程。
+- `files/system/vold/Decrypt.cpp`：KeyMint 环境压制与解密流程，不包含 Neo8 的 persist、TMS Weaver 或 ColorOS 路径兼容代码。
 - `files/system/vold/KeyStorage.cpp`：`KM_TAG_FBE_ICE` 与升级写回保护。
 - `patches/system_vold/key_storage_recovery_safety.patch`：KeyStorage 改动的 diff 形式。
 
-配套设备树部分（Thales/Goodix 服务、SELog guard）位于 `device/xiaomi/nezha/`，与本目录补丁共同构成完整修复。
+配套设备树部分（Thales/Goodix 服务、解密前等待、失败重试与重启清理）位于 `device/xiaomi/nezha/`，通过公共脚本钩子接入 recovery 框架。

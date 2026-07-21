@@ -1615,7 +1615,7 @@ bool TWPartition::Mount(bool Display_Error) {
 		static bool logged_predecrypt_data_probe = false;
 		Display_Error = false;
 		if (!logged_predecrypt_data_probe) {
-			LOGINFO("Neo8: suppressing expected /data mount error before metadata/FBE decryption\n");
+			LOGINFO("Suppressing expected /data mount error before metadata/FBE decryption\n");
 			logged_predecrypt_data_probe = true;
 		}
 	}

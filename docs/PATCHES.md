@@ -5,27 +5,11 @@ This document describes the purpose of each source modification under `patches/`
 Patches are grouped by scope:
 
 - `patches/common/` — applied to **all four devices**. Recovery framework changes plus the Weaver retry adjustment.
-- `patches/<device>/` — applied **only** when building that device. Today only `neo8` and `nezha` carry device-specific patches (the KeyMint environment fix); `myron` and `annibale` run stock vold and need none.
+- `patches/<device>/` — applied **only** when building that device. `neo8` contains its recovery framework and KeyMint overrides; `nezha` contains its KeyMint implementation. `myron` and `annibale` run stock vold and need none.
 
 `scripts/apply-patches.sh <twrp-source> <codename>` always applies `common` first, then the codename's own directory.
 
 ## Common Patch Files (`patches/common/patches/`)
-
-### `bootable_recovery/bootable_recovery.patch`
-
-A consolidated git patch covering the following recovery framework changes:
-
-| File | Change Description |
-|------|-------------------|
-| `twinstall.cpp` | Virtual A/B slot detection fix. Ensures correct active slot is detected when flashing ZIPs. |
-| `action.cpp` | Auto-reflash TWRP after ROM flash. Backs up the current recovery image before flashing, then restores it to both slots afterward. |
-| `twrp-functions.cpp` | Clear bootloader message before reboot to prevent bootloop. Also fixes `rb_fastboot` to use the correct `reboot,bootloader` property. |
-| `gui/theme/common/languages/en.xml` | Added `reflash_twrp_after_zip` and `reflash_twrp_err` language strings. |
-| `gui/theme/extra-languages/languages/zh_CN.xml` | Added Chinese translations for reflash TWRP strings. |
-| `gui/theme/extra-languages/languages/zh_TW.xml` | Added Traditional Chinese translations for reflash TWRP strings. |
-| `gui/theme/portrait_hdpi/ui.xml` | UI layout adjustments. |
-| `partition.cpp` / `partitionmanager.cpp` | Dynamic partition / Virtual A/B alias handling. |
-| `twrp-functions.cpp` / `twrp.cpp` | Recovery behavior, storage handling, USB/MTP fixes. |
 
 ### `bootable_recovery/0002-nullptr-crash-fix.patch`
 
@@ -40,6 +24,10 @@ A consolidated git patch covering the following recovery framework changes:
 | `Weaver1.cpp` | Android 16 FBE / Weaver compatibility adjustment. Fixes interaction with Qualcomm Keymaster/Weaver HAL for file-based encryption decryption in recovery. |
 
 ## Per-device Patch Files
+
+### `patches/neo8/patches/bootable_recovery/ui_device_overrides.patch`
+
+Neo8-only direct reboot flow, WLAN layout coordinates and dynamic system-size rule. The Neo8 DRM implementation, recovery init files and GUI build file are also stored under `patches/neo8/files/bootable/recovery/`.
 
 ### `patches/neo8/patches/system_vold/key_storage_recovery_safety.patch`
 
@@ -60,10 +48,9 @@ Each `patches/<set>/files/` directory contains complete modified source files in
 Contains the full modified recovery framework used for SM8850 devices, including:
 - Core recovery logic (`partition.cpp`, `partitionmanager.cpp`, `twrp.cpp`, `twrp-functions.cpp`)
 - GUI framework (`action.cpp`, `gui.cpp`, `theme/`)
-- Build system (`Android.mk`, `Android.bp`, `libguitwrp_defaults.go`)
-- Device-specific additions (e.g., `minuitwrp/graphics_drm.cpp` for Neo8)
+- Build system extension points (`Android.mk`, `libguitwrp_defaults.go`)
 
-**Note:** For Neo8, some files in this directory may differ from the Xiaomi device variants due to device-specific adjustments (e.g., DRM graphics init, OPlus touch stack integration, custom init scripts).
+Device-specific implementations are not stored in the common file set. Recovery invokes optional device scripts through the generic `twrp-pre-decrypt.sh`, `twrp-decrypt-retry.sh` and `twrp-reboot-cleanup.sh` names.
 
 ### `patches/common/files/system/vold/Weaver1.cpp`
 
@@ -71,7 +58,7 @@ Weaver HAL retry/wait adjustment, needed by all four devices regardless of secur
 
 ### `patches/neo8/files/system/vold/` and `patches/nezha/files/system/vold/`
 
-`Decrypt.cpp` + `KeyStorage.cpp`: before decryption, pin the KeyMint environment (OS version / OS patch level / vendor patch level) to the installed system's real values, so the recovery's spoofed platform version (`99.87.36` / `2099-12-31`) is not treated as a newer environment that would trigger a KeyMint key upgrade on every boot. On Neo8 the values can also be overridden via the `twrp.neo8.osver/ospatch/venpatch` properties.
+`Decrypt.cpp` + `KeyStorage.cpp`: before decryption, pin the KeyMint environment (OS version / OS patch level / vendor patch level) to the installed system's real values, so the recovery's spoofed platform version (`99.87.36` / `2099-12-31`) is not treated as a newer environment that would trigger a KeyMint key upgrade on every boot. Values can be overridden via `twrp.keymint.osver/ospatch/venpatch`.
 
 **Do not apply these to myron/annibale.** Those two devices use NXP KeyMint, which takes its environment from vendor properties; the spoofed recovery version never reaches KeyMint, and this environment-switching logic would only invent inconsistent environments there.
 

@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/.."
 CODENAME="${1:-}"
 VENDOR="${2:-}"
+TWRP_SOURCE="${TWRP_SOURCE:-$(pwd)}"
 
 if [ -z "$CODENAME" ]; then
     echo "Usage: ./scripts/build.sh <codename> [vendor]"
@@ -43,18 +44,25 @@ if [ -z "$VENDOR" ] || [ ! -d "$REPO_ROOT/device/$VENDOR/$CODENAME" ]; then
 fi
 
 DEVICE_PATH="$REPO_ROOT/device/$VENDOR/$CODENAME"
+if [ ! -f "$TWRP_SOURCE/build/envsetup.sh" ]; then
+    echo "Error: '$TWRP_SOURCE' is not a TWRP source root."
+    echo "Run this script from the TWRP source root or set TWRP_SOURCE."
+    exit 1
+fi
+
 echo "========================================"
 echo "Building TWRP for: $CODENAME"
 echo "Vendor: $VENDOR"
 echo "Device path: $DEVICE_PATH"
+echo "TWRP source: $TWRP_SOURCE"
 echo "========================================"
 echo ""
 
 # Apply source changes
-"$SCRIPT_DIR/apply-patches.sh" "$REPO_ROOT" "$CODENAME"
+"$SCRIPT_DIR/apply-patches.sh" "$TWRP_SOURCE" "$CODENAME"
 
 # Build
-cd "$REPO_ROOT"
+cd "$TWRP_SOURCE"
 source build/envsetup.sh
 lunch "twrp_${CODENAME}-eng"
 mka recoveryimage

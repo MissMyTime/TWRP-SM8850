@@ -510,8 +510,7 @@
 				<text>{@reboot_system_btn=Reboot System}</text>
 				<actions>
 					<action function="set">tw_back=main2</action>
-					<action function="set">tw_reboot_param=system</action>
-					<action function="reboot">system</action>
+					<action function="page">reboot_system_routine</action>
 				</actions>
 			</button>
 
@@ -597,8 +596,7 @@
 				<actions>
 					<action function="sleep">50000</action>
 					<action function="set">tw_back=main2</action>
-					<action function="set">tw_reboot_param=system</action>
-					<action function="reboot">system</action>
+					<action function="page">reboot_system_routine</action>
 				</actions>
 			</action>
 		</page>
@@ -726,7 +724,18 @@
 
 		<page name="reboot_system_routine">
 			<action>
-				<action function="reboot">system</action>
+				<action function="set">tw_action=reboot</action>
+				<action function="set">tw_action_param=system</action>
+				<action function="set">tw_has_action2=0</action>
+				<action function="set">tw_text1={@no_os1=No OS Installed! Are you}</action>
+				<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
+				<action function="set">tw_text3=</action>
+				<action function="set">tw_text4=</action>
+				<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
+				<action function="set">tw_action_text2=</action>
+				<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
+				<action function="set">tw_slider_text={@swipe_reboot=Swipe to Reboot}</action>
+				<action function="page">rebootcheck</action>
 			</action>
 		</page>
 
@@ -910,8 +919,7 @@
 				<text>{@reboot_system_btn=Reboot System}</text>
 				<actions>
 					<action function="set">tw_back=main2</action>
-					<action function="set">tw_reboot_param=system</action>
-					<action function="reboot">system</action>
+					<action function="page">reboot_system_routine</action>
 				</actions>
 			</button>
 
@@ -3136,8 +3144,7 @@
 					<condition var1="tw_reboot_system" var2="1"/>
 					<actions>
 						<action function="set">tw_back=reboot</action>
-						<action function="set">tw_reboot_param=system</action>
-						<action function="reboot">system</action>
+						<action function="page">reboot_system_routine</action>
 					</actions>
 				</listitem>
 
@@ -3913,7 +3920,7 @@
 				<text>{@wlan_log_hdr=This page is building by Jason}</text>
 			</text>
 
-			<borderedlogbox toprow="%row3_y%" bottomrow="1004" borderwidth="2" leftmargin="75" rightmargin="75">
+			<borderedlogbox toprow="%row3_y%" bottomrow="1224" borderwidth="2" leftmargin="75" rightmargin="75">
 				<placement x="%indent%" w="%content_width%"/>
 				<color foreground="%text_color%" background="%background_color%" border="%accent_color%"/>
 				<font resource="fixed" color="%text_color%" spacing="0"/>
@@ -3922,28 +3929,28 @@
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%indent%" y="1060"/>
+				<placement x="%indent%" y="1224"/>
 				<text>{@wlan_get_status_btn=Get Status}</text>
 				<action function="wlangetstatus"/>
 			</button>
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%center_x%" y="1060"/>
+				<placement x="%center_x%" y="1224"/>
 				<text>{@wlan_test_network_btn=Test Network}</text>
 				<action function="wlantest"/>
 			</button>
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%indent%" y="1252"/>
+				<placement x="%indent%" y="1416"/>
 				<text>{@wlan_scan_btn=Scan}</text>
 				<action function="wlanscan"/>
 			</button>
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%center_x%" y="1252"/>
+				<placement x="%center_x%" y="1416"/>
 				<text>{@wlan_connect_btn=Connect}</text>
 				<actions>
 					<action function="set">tw_back=wlan</action>
@@ -3954,14 +3961,14 @@
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%indent%" y="1444"/>
+				<placement x="%indent%" y="1608"/>
 				<text>{@wlan_stop_service_btn=Stop Service}</text>
 				<action function="wlanstop"/>
 			</button>
 
 			<button style="main_button_half_height">
 				<condition var1="tw_disable_network" var2="0"/>
-				<placement x="%center_x%" y="1444"/>
+				<placement x="%center_x%" y="1608"/>
 				<text>{@wlan_start_service_btn=Start Service}</text>
 				<action function="wlanstart"/>
 			</button>

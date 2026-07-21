@@ -1,0 +1,135 @@
+diff --git a/variables.h b/variables.h
+index 2a77a3a..8ae0aea 100644
+--- a/variables.h
++++ b/variables.h
+@@ -137,7 +137,7 @@
+ #define TW_INJECT_AFTER_ZIP         "tw_inject_after_zip"
+ #define TW_HAS_DATADATA             "tw_has_datadata"
+ #define TW_FLASH_ZIP_IN_PLACE       "tw_flash_zip_in_place"
+-#define TW_MIN_SYSTEM_SIZE          "50" // minimum system size to allow a reboot
++#define TW_MIN_SYSTEM_SIZE          "0" // dynamic system partitions may not be sized before the reboot page opens
+ #define TW_MIN_SYSTEM_VAR           "tw_min_system"
+ #define TW_DOWNLOAD_MODE            "tw_download_mode"
+ #define TW_EDL_MODE                 "tw_edl_mode"
+diff --git a/gui/theme/common/portrait.xml b/gui/theme/common/portrait.xml
+--- a/gui/theme/common/portrait.xml
++++ b/gui/theme/common/portrait.xml
+@@ -510,6 +510,7 @@
+ 				<text>{@reboot_system_btn=Reboot System}</text>
+ 				<actions>
+ 					<action function="set">tw_back=main2</action>
+-					<action function="page">reboot_system_routine</action>
++					<action function="set">tw_reboot_param=system</action>
++					<action function="reboot">system</action>
+ 				</actions>
+ 			</button>
+@@ -596,6 +597,7 @@
+ 				<actions>
+ 					<action function="sleep">50000</action>
+ 					<action function="set">tw_back=main2</action>
+-					<action function="page">reboot_system_routine</action>
++					<action function="set">tw_reboot_param=system</action>
++					<action function="reboot">system</action>
+ 				</actions>
+ 			</action>
+@@ -724,16 +726,5 @@
+ 		<page name="reboot_system_routine">
+ 			<action>
+-				<action function="set">tw_action=reboot</action>
+-				<action function="set">tw_action_param=system</action>
+-				<action function="set">tw_has_action2=0</action>
+-				<action function="set">tw_text1={@no_os1=No OS Installed! Are you}</action>
+-				<action function="set">tw_text2={@no_osrb=sure you wish to reboot?}</action>
+-				<action function="set">tw_text3=</action>
+-				<action function="set">tw_text4=</action>
+-				<action function="set">tw_action_text1={@rebooting=Rebooting...}</action>
+-				<action function="set">tw_action_text2=</action>
+-				<action function="set">tw_complete_text1={@rebooting=Rebooting...}</action>
+-				<action function="set">tw_slider_text={@swipe_reboot=Swipe to Reboot}</action>
+-				<action function="page">rebootcheck</action>
++				<action function="reboot">system</action>
+ 			</action>
+ 		</page>
+@@ -919,6 +910,7 @@
+ 				<text>{@reboot_system_btn=Reboot System}</text>
+ 				<actions>
+ 					<action function="set">tw_back=main2</action>
+-					<action function="page">reboot_system_routine</action>
++					<action function="set">tw_reboot_param=system</action>
++					<action function="reboot">system</action>
+ 				</actions>
+ 			</button>
+@@ -3144,6 +3136,7 @@
+ 					<condition var1="tw_reboot_system" var2="1"/>
+ 					<actions>
+ 						<action function="set">tw_back=reboot</action>
+-						<action function="page">reboot_system_routine</action>
++						<action function="set">tw_reboot_param=system</action>
++						<action function="reboot">system</action>
+ 					</actions>
+ 				</listitem>
+@@ -3922,3 +3915,3 @@
+ 
+-			<borderedlogbox toprow="%row3_y%" bottomrow="1224" borderwidth="2" leftmargin="75" rightmargin="75">
++			<borderedlogbox toprow="%row3_y%" bottomrow="1004" borderwidth="2" leftmargin="75" rightmargin="75">
+ 				<placement x="%indent%" w="%content_width%"/>
+@@ -3930,5 +3923,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%indent%" y="1224"/>
++				<placement x="%indent%" y="1060"/>
+ 				<text>{@wlan_get_status_btn=Get Status}</text>
+ 				<action function="wlangetstatus"/>
+@@ -3937,5 +3930,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%center_x%" y="1224"/>
++				<placement x="%center_x%" y="1060"/>
+ 				<text>{@wlan_test_network_btn=Test Network}</text>
+ 				<action function="wlantest"/>
+@@ -3944,5 +3937,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%indent%" y="1416"/>
++				<placement x="%indent%" y="1252"/>
+ 				<text>{@wlan_scan_btn=Scan}</text>
+ 				<action function="wlanscan"/>
+@@ -3951,5 +3944,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%center_x%" y="1416"/>
++				<placement x="%center_x%" y="1252"/>
+ 				<text>{@wlan_connect_btn=Connect}</text>
+ 				<actions>
+@@ -3962,5 +3955,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%indent%" y="1608"/>
++				<placement x="%indent%" y="1444"/>
+ 				<text>{@wlan_stop_service_btn=Stop Service}</text>
+ 				<action function="wlanstop"/>
+@@ -3969,5 +3962,5 @@
+ 			<button style="main_button_half_height">
+ 				<condition var1="tw_disable_network" var2="0"/>
+-				<placement x="%center_x%" y="1608"/>
++				<placement x="%center_x%" y="1444"/>
+ 				<text>{@wlan_start_service_btn=Start Service}</text>
+ 				<action function="wlanstart"/>
+diff --git a/gui/theme/portrait_hdpi/ui.xml b/gui/theme/portrait_hdpi/ui.xml
+--- a/gui/theme/portrait_hdpi/ui.xml
++++ b/gui/theme/portrait_hdpi/ui.xml
+@@ -6,6 +6,6 @@
+ 		<title>Backup Naowz</title>
+ 		<description>Default basic theme</description>
+ 		<preview>preview.png</preview>
+-		<themeversion>{themeversion}</themeversion>
++		<themeversion>6</themeversion>
+ 	</details>
+ 
+@@ -309,5 +309,5 @@
+ 			<image>
+ 				<condition var1="tw_wlan_connected" var2="1"/>
+ 				<image resource="wifi_status"/>
+-				<placement x="724" y="%row1_header_y%" w="42" h="42"/>
++				<placement x="742" y="22" w="42" h="42"/>
+ 			</image>

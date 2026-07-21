@@ -26,3 +26,11 @@ ro.crypto.metadata.enabled=true
 ro.crypto.metadata_init_delete_all_keys.enabled=true
 ro.crypto.support_metadata_encrypt=true
 ro.hardware.keystore_desede=true
+
+# Recovery framework opt-ins
+twrp.recovery.keep_runtime_partitions=true
+twrp.recovery.prepare_fbe=true
+twrp.recovery.post_decrypt_media_bind=true
+twrp.recovery.direct_system_reboot=true
+twrp.recovery.touch_service=vendor.touch-aidl-1
+twrp.keymint.allow_stock_retry=true

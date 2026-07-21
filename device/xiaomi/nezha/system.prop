@@ -29,3 +29,6 @@ ro.minui.overscan_percent=0
 # USB recovery identifiers
 ro.recovery.usb.vid=18D1
 ro.recovery.usb.adb.pid=D001
+
+# Recovery framework opt-ins
+twrp.keymint.allow_stock_retry=true

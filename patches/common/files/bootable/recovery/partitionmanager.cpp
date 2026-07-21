@@ -158,102 +158,32 @@ std::vector<users_struct> Users_List;
 
 std::string additional_fstab = "/etc/additional.fstab";
 
-static bool Nezha_Goodix_Gate_Present() {
-	return TWFunc::Path_Exists("/system/bin/nezha-goodix-gate.sh");
+namespace android {
+namespace keystore {
+	bool setRecoveryKeyMintEnvironment(bool stock_environment) __attribute__((weak));
+}
 }
 
-static bool Nezha_Prop_Equals(const char* prop, const char* expected) {
-	char value[PROPERTY_VALUE_MAX];
-	property_get(prop, value, "");
-	return strcmp(value, expected) == 0;
-}
-
-static int Nezha_Weaver_Wait_Limit_Seconds() {
-	char route[PROPERTY_VALUE_MAX];
-	property_get("twrp.nezha.crypto_route", route, "");
-	if (strcmp(route, "normal_590") == 0)
-		return 120;
-	if (strcmp(route, "leica_597") == 0)
-		return 75;
-	return 100;
-}
-
-static void Kick_Nezha_Goodix_Gate(bool full_restart) {
-	if (!Nezha_Goodix_Gate_Present())
-		return;
-
-	if (full_restart) {
-		TWFunc::Exec_Cmd("setprop twrp.nezha.weaver_ready 0; "
-			"setprop twrp.nezha.goodix_gate_error ''; "
-			"stop nezha-goodix-gate; "
-			"stop goodix_weaver_hal_service; "
-			"stop secure_element_hal_service; "
-			"killall android.hardware.weaver-service-goodix-recovery 2>/dev/null; "
-			"killall android.hardware.secure_element-service-goodix-recovery 2>/dev/null; "
-			"sleep 1; "
-			"start nezha-goodix-gate", false);
-	} else {
-		TWFunc::Exec_Cmd("setprop twrp.nezha.goodix_gate_error ''; start nezha-goodix-gate", false);
-	}
-}
-
-static bool Wait_For_Nezha_Weaver_Ready() {
-	// Xiaomi 17 Ultra starts its Goodix eSE/Weaver chain after vendor modules
-	// load. Keep credential verification behind that gate so an early submit
-	// cannot be reported as a bad password. If the one-shot gate exited before
-	// reaching ready, restart it here rather than making the user reboot recovery.
-	if (!Nezha_Goodix_Gate_Present())
+static bool Run_Pre_Decrypt_Hook() {
+	static constexpr const char* hook = "/system/bin/twrp-pre-decrypt.sh";
+	if (!TWFunc::Path_Exists(hook))
 		return true;
 
-	if (Nezha_Prop_Equals("twrp.nezha.weaver_ready", "1"))
+	gui_msg("recovery_hook_wait=Waiting for the device security service...");
+	if (TWFunc::Exec_Cmd(hook, false) == 0)
 		return true;
 
-	LOGINFO("nezha: waiting for Goodix Weaver before FBE credential verification\n");
-	gui_msg("nezha_goodix_wait=Waiting for Goodix Weaver before checking password...");
-
-	int restarts = 0;
-	const int limit = Nezha_Weaver_Wait_Limit_Seconds();
-	for (int second = 0; second < limit; second++) {
-		if (Nezha_Prop_Equals("twrp.nezha.weaver_ready", "1")) {
-			LOGINFO("nezha: Goodix Weaver is ready\n");
-			return true;
-		}
-
-		char gate_state[PROPERTY_VALUE_MAX];
-		char error[PROPERTY_VALUE_MAX];
-		property_get("init.svc.nezha-goodix-gate", gate_state, "");
-		property_get("twrp.nezha.goodix_gate_error", error, "");
-
-		if (second == 0 && strcmp(gate_state, "running") != 0) {
-			LOGINFO("nezha: Goodix gate was not running at password submit; starting it\n");
-			Kick_Nezha_Goodix_Gate(false);
-		} else if (error[0] != '\0' && restarts < 2) {
-			LOGINFO("nezha: Goodix gate reported '%s'; restarting before password check\n", error);
-			Kick_Nezha_Goodix_Gate(true);
-			restarts++;
-		} else if (second > 15 && strcmp(gate_state, "running") != 0 && restarts < 2) {
-			LOGINFO("nezha: Goodix gate exited before ready; restarting before password check\n");
-			Kick_Nezha_Goodix_Gate(true);
-			restarts++;
-		}
-
-		usleep(1000000);
-	}
-
-	char error[PROPERTY_VALUE_MAX];
-	property_get("twrp.nezha.goodix_gate_error", error, "");
-	LOGERR("nezha: Goodix Weaver did not become ready; gate error: %s\n", error);
-	gui_err("nezha_goodix_not_ready=Goodix Weaver is not ready; password verification was not attempted.");
+	gui_err("recovery_hook_failed=The device security service is not ready; password verification was not attempted.");
 	return false;
 }
 
-static bool Restart_Nezha_Goodix_Gate_And_Wait() {
-	if (!Nezha_Goodix_Gate_Present())
-		return true;
+static bool Run_Decrypt_Retry_Hook() {
+	static constexpr const char* hook = "/system/bin/twrp-decrypt-retry.sh";
+	if (!TWFunc::Path_Exists(hook))
+		return false;
 
-	LOGINFO("nezha: restarting Goodix Weaver gate before retrying FBE credential verification\n");
-	Kick_Nezha_Goodix_Gate(true);
-	return Wait_For_Nezha_Weaver_Ready();
+	gui_msg("recovery_hook_retry=Restarting the device security service before retrying decryption...");
+	return TWFunc::Exec_Cmd(hook, false) == 0;
 }
 
 static std::string Normalize_Slot_Suffix(std::string slot) {
@@ -351,7 +281,7 @@ int TWPartitionManager::Set_Crypto_Type(const char* crypto_type) {
 			property_set("ro.crypto.type", crypto_type);
 		}
 		property_get("ro.crypto.type", type_prop, "error");
-		LOGINFO("Neo8 FBE type override: requested=%s effective=%s\n", crypto_type, type_prop);
+		LOGINFO("FBE type override: requested=%s effective=%s\n", crypto_type, type_prop);
 	}
 	// Sleep for a bit so that services can start if needed
 	sleep(1);
@@ -475,10 +405,9 @@ static inline std::string KM_Ver_From_Manifest(std::string ver) {
 	return ver;
 }
 
-static inline bool Keep_Neo8_Runtime_Partitions() {
-	const std::string product_device =
-		android::base::GetProperty("ro.product.device", "");
-	return product_device == "RE6402L1" || product_device == "RMX8899";
+static inline bool Keep_Runtime_Partitions() {
+	return android::base::GetBoolProperty(
+		"twrp.recovery.keep_runtime_partitions", false);
 }
 
 void inline Process_Keymaster_Version(TWPartition *ven, bool Display_Error) {
@@ -492,7 +421,7 @@ void inline Process_Keymaster_Version(TWPartition *ven, bool Display_Error) {
 		*/
 	if (version.empty()) {
 		// unmount partition(s)
-		if (ven && !Keep_Neo8_Runtime_Partitions()) ven->UnMount(Display_Error);
+		if (ven && !Keep_Runtime_Partitions()) ven->UnMount(Display_Error);
 
 		// Use keymaster_ver prop set from device tree (if exists)
 		version = android::base::GetProperty(TW_KEYMASTER_VERSION_PROP, version);
@@ -503,10 +432,10 @@ void inline Process_Keymaster_Version(TWPartition *ven, bool Display_Error) {
 			LOGINFO("Keymaster_Ver::Unable to find vendor manifest on the device. Setting to default value.\n");
 		}
 	} else {
-		if (ven && !Keep_Neo8_Runtime_Partitions()) ven->UnMount(Display_Error);
+		if (ven && !Keep_Runtime_Partitions()) ven->UnMount(Display_Error);
 	}
 #else
-	if (ven && !Keep_Neo8_Runtime_Partitions()) ven->UnMount(Display_Error);
+	if (ven && !Keep_Runtime_Partitions()) ven->UnMount(Display_Error);
 
 	version = android::base::GetProperty(TW_KEYMASTER_VERSION_PROP, version);
 	if (version.empty()) {
@@ -697,8 +626,8 @@ clear:
 #endif
 
 	if (odm) {
-		if (Keep_Neo8_Runtime_Partitions()) {
-			LOGINFO("Neo8: keeping /odm mounted for touch and security HAL restart stability\n");
+		if (Keep_Runtime_Partitions()) {
+			LOGINFO("Keeping /odm mounted for recovery HAL stability\n");
 		} else {
 			odm->UnMount(Display_Error);
 		}
@@ -706,8 +635,8 @@ clear:
 	if (recovery_mode)
 		Process_Keymaster_Version(ven, false);
 	if (ven) {
-		if (Keep_Neo8_Runtime_Partitions()) {
-			LOGINFO("Neo8: keeping /vendor mounted for active HAL dependencies\n");
+		if (Keep_Runtime_Partitions()) {
+			LOGINFO("Keeping /vendor mounted for active recovery HAL dependencies\n");
 		} else {
 			ven->UnMount(Display_Error);
 		}
@@ -931,52 +860,35 @@ void TWPartitionManager::Decrypt_Data() {
 			};
 
 			std::string metadata_environment =
-				android::base::GetProperty("twrp.neo8.metadata_env", "high");
+				android::base::GetProperty("twrp.keymint.metadata_env", "recovery");
 			bool metadata_ready = try_metadata_environment();
 			const bool allow_stock_retry = android::base::GetBoolProperty(
-				"twrp.neo8.oldkey_compat", false);
-			if (!metadata_ready && metadata_environment != "stock" && allow_stock_retry) {
-				LOGINFO("Neo8 metadata decrypt failed with high KeyMint values; "
+				"twrp.keymint.allow_stock_retry", false);
+			const bool has_environment_hook =
+				android::keystore::setRecoveryKeyMintEnvironment != nullptr;
+			if (!metadata_ready && metadata_environment != "stock" &&
+					allow_stock_retry && has_environment_hook) {
+				LOGINFO("Metadata decrypt failed in the recovery KeyMint environment; "
 					"retrying with device stock values\n");
 				if (!Mount_By_Path("/system_root", false))
-					LOGINFO("Neo8 metadata compatibility: unable to mount /system_root; "
+					LOGINFO("Metadata compatibility: unable to mount /system_root; "
 						"stock property discovery will use fallbacks\n");
 				Mount_By_Path("/vendor", false);
-				if (android::keystore::setNeo8KeyMintEnvironment(true)) {
+				if (android::keystore::setRecoveryKeyMintEnvironment(true)) {
 					metadata_environment = "stock";
 					metadata_ready = try_metadata_environment();
 				}
-				if (!metadata_ready && metadata_environment == "stock") {
-					const std::vector<std::string> historical_patches = {
-						"2026-05-01",
-						"2025-06-01",
-					};
-					for (const auto& patch : historical_patches) {
-						LOGINFO("Neo8 metadata compatibility: retrying historical "
-							"KeyMint patch level %s\n", patch.c_str());
-						android::base::SetProperty("twrp.neo8.osver", "16");
-						android::base::SetProperty("twrp.neo8.ospatch", patch);
-						android::base::SetProperty("twrp.neo8.venpatch", patch);
-						if (android::keystore::setNeo8KeyMintEnvironment(true) &&
-								try_metadata_environment()) {
-							metadata_ready = true;
-							LOGINFO("Neo8 metadata compatibility: historical patch "
-								"%s succeeded\n", patch.c_str());
-							break;
-						}
-					}
-				}
-			} else if (!metadata_ready && !allow_stock_retry) {
-				LOGINFO("Neo8 metadata stock retry is disabled for the mainline image\n");
+			} else if (!metadata_ready && allow_stock_retry && !has_environment_hook) {
+				LOGINFO("Metadata stock retry was requested, but no device KeyMint hook is available\n");
 			}
 			if (metadata_ready) {
-				android::base::SetProperty("twrp.neo8.metadata_env", metadata_environment);
-				LOGINFO("Neo8 metadata decrypt selected KeyMint environment: %s\n",
+				android::base::SetProperty("twrp.keymint.metadata_env", metadata_environment);
+				LOGINFO("Metadata decrypt selected KeyMint environment: %s\n",
 					metadata_environment.c_str());
-			} else if (metadata_environment == "stock") {
-				LOGINFO("Neo8 metadata retry with stock values also failed; restoring high values\n");
-				android::keystore::setNeo8KeyMintEnvironment(false);
-				android::base::SetProperty("twrp.neo8.metadata_env", "high");
+			} else if (metadata_environment == "stock" && has_environment_hook) {
+				LOGINFO("Metadata retry with stock values failed; restoring recovery values\n");
+				android::keystore::setRecoveryKeyMintEnvironment(false);
+				android::base::SetProperty("twrp.keymint.metadata_env", "recovery");
 			}
 #endif
 #else
@@ -2287,7 +2199,7 @@ void TWPartitionManager::Update_System_Details(void) {
 				 android::base::GetBoolProperty("ro.crypto.metadata.enabled", false)) &&
 				!android::base::GetBoolProperty("twrp.decrypt.done", false);
 			if (expected_locked_data) {
-				LOGINFO("Neo8: internal storage is locked until metadata/FBE decryption; "
+				LOGINFO("Internal storage is locked until metadata/FBE decryption; "
 				        "suppressing expected storage warning\n");
 			} else {
 				gui_msg(Msg(msg::kWarning, "unable_to_mount_storage=Unable to mount storage"));
@@ -2330,8 +2242,34 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 		dat->Setup_File_System(false);
 		dat->Current_File_System = dat->Fstab_File_System;  // Needed if we're ignoring blkid because encrypted devices start out as emmc
 
-		// Metadata setup is synchronous on this device. Keep only a short
-		// settling interval instead of blocking the decrypt UI for one second.
+		if (!android::base::GetBoolProperty(
+				"twrp.recovery.post_decrypt_media_bind", false)) {
+			sleep(1);
+			dat->Symlink_Path.clear();
+			if (!dat->Mount(false))
+				LOGERR("Unable to mount /data after decryption");
+
+			if (dat->Has_Data_Media && TWFunc::Path_Exists("/data/media/0"))
+				dat->Storage_Path = "/data/media/0";
+			else
+				dat->Storage_Path = "/data/media";
+
+			dat->Symlink_Path = dat->Storage_Path;
+			DataManager::SetValue("tw_storage_path", dat->Symlink_Path);
+			DataManager::SetValue("tw_settings_path", TW_STORAGE_PATH);
+			LOGINFO("New storage path after decryption: %s\n", dat->Storage_Path.c_str());
+
+			DataManager::LoadTWRPFolderInfo();
+			Update_System_Details();
+			Output_Partition(dat);
+			if (!android::base::StartsWith(dat->Actual_Block_Device, "/dev/block/mmcblk") &&
+					!dat->Bind_Mount(false))
+				LOGERR("Unable to bind mount /sdcard to %s\n", dat->Storage_Path.c_str());
+			return;
+		}
+
+		// The opt-in media path uses a short settling interval instead of
+		// blocking the decrypt UI for one second.
 		usleep(100000);
 
 		// Mount only /data. Binding is done below after the CE media path appears.
@@ -2341,7 +2279,7 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 			LOGERR("Unable to mount /data after decryption");
 		}
 
-		// Neo8 media bind fix: wait for CE media and initialize a real bind target.
+		// Wait for CE media and initialize a real bind target.
 		// Do not create /data/media here: a synthetic directory can hide an FBE failure.
 		for (int retry = 0; retry < 50 &&
 			 !TWFunc::Path_Exists("/data/media/0"); ++retry) {
@@ -2352,10 +2290,10 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 			dat->Storage_Path = "/data/media/0";
 		} else if (TWFunc::Path_Exists("/data/media")) {
 			dat->Storage_Path = "/data/media";
-			LOGINFO("Neo8: user media/0 is unavailable; using /data/media temporarily\n");
+			LOGINFO("User media/0 is unavailable; using /data/media temporarily\n");
 		} else {
 			dat->Symlink_Path = saved_symlink_path;
-			LOGERR("Neo8: FBE reported success but neither /data/media/0 nor /data/media exists\n");
+			LOGERR("FBE reported success but neither /data/media/0 nor /data/media exists\n");
 			Update_System_Details();
 			Output_Partition(dat);
 			return;
@@ -2364,7 +2302,7 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 		if (dat->Symlink_Mount_Point.empty()) {
 			dat->Symlink_Mount_Point = "/sdcard";
 			mkdir(dat->Symlink_Mount_Point.c_str(), 0770);
-			LOGINFO("Neo8: initialized empty media bind target as %s\n",
+			LOGINFO("Initialized empty media bind target as %s\n",
 				dat->Symlink_Mount_Point.c_str());
 		}
 
@@ -2375,12 +2313,12 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 			dat->Storage_Name = "Internal Storage";
 		if (dat->MTP_Storage_ID == 0) {
 			dat->MTP_Storage_ID = (1U << 16) + 1;
-			LOGINFO("Neo8: assigned internal-storage MTP ID %u after decryption\n",
+			LOGINFO("Assigned internal-storage MTP ID %u after decryption\n",
 				dat->MTP_Storage_ID);
 		}
 		DataManager::SetValue("tw_storage_path", dat->Storage_Path);
 		DataManager::SetValue("tw_settings_path", TW_STORAGE_PATH);
-		LOGINFO("Neo8 media path after decryption: %s -> %s\n",
+		LOGINFO("Media path after decryption: %s -> %s\n",
 			dat->Symlink_Path.c_str(), dat->Symlink_Mount_Point.c_str());
 
 		umount2(dat->Symlink_Mount_Point.c_str(), MNT_DETACH);
@@ -2403,11 +2341,11 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 		// storage only when MTP was already running; never enable MTP merely as
 		// a side effect of pressing Decrypt.
 		if (mtppid) {
-			LOGINFO("Neo8: publishing decrypted user 0 media to active MTP\n");
+			LOGINFO("Publishing decrypted user 0 media to active MTP\n");
 			Remove_MTP_Storage(dat->MTP_Storage_ID);
 			usleep(100000);
 			if (!Add_MTP_Storage(dat->MTP_Storage_ID))
-				LOGERR("Neo8: unable to publish decrypted media to active MTP\n");
+				LOGERR("Unable to publish decrypted media to active MTP\n");
 		}
 #endif
 	} else
@@ -2573,7 +2511,7 @@ int TWPartitionManager::Decrypt_Device(string Password, int user_id) {
 				while (!TWFunc::Path_Exists("/data/system/users/gatekeeper.password.key") && --retry_count)
 					usleep(2000); // A small sleep is needed after mounting /data to ensure reliable decrypt...maybe because of DE?
 				gui_msg(Msg("decrypting_user_fbe=Attempting to decrypt FBE for user {1}...")(user_id));
-				if (!Wait_For_Nezha_Weaver_Ready())
+				if (!Run_Pre_Decrypt_Hook())
 					return -1;
 				LOGINFO("Calling android::keystore::Decrypt_User for user %d\n", user_id);
 				if (android::keystore::Decrypt_User(user_id, Password)) {
@@ -2585,10 +2523,9 @@ int TWPartitionManager::Decrypt_Device(string Password, int user_id) {
 
 			return 0;
 		} else {
-			if (TWFunc::Path_Exists("/system/bin/nezha-goodix-gate.sh")) {
-				LOGINFO("nezha: first FBE credential verification failed; retrying after Goodix gate restart\n");
-				gui_msg("nezha_goodix_retry=Goodix Weaver was not stable; retrying decryption...");
-				if (Restart_Nezha_Goodix_Gate_And_Wait() && android::keystore::Decrypt_User(user_id, Password)) {
+			if (TWFunc::Path_Exists("/system/bin/twrp-decrypt-retry.sh")) {
+				LOGINFO("Credential verification failed; running the device retry hook\n");
+				if (Run_Decrypt_Retry_Hook() && android::keystore::Decrypt_User(user_id, Password)) {
 					gui_msg(Msg("decrypt_user_success_fbe=User {1} Decrypted Successfully")(user_id));
 					Mark_User_Decrypted(user_id);
 					if (user_id == 0) {

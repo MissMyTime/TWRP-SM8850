@@ -41,19 +41,19 @@ twrp_device_sm8850/
 │   └── realme/
 │       └── RE6402L1/                  # realme Neo8
 ├── patches/                           # TWRP source patches (grouped by scope)
-│   ├── common/                        # All devices: recovery framework + Weaver retry
+│   ├── common/                        # All devices: framework hooks + Weaver retry
 │   │   ├── files/                     # Full patched source files
 │   │   └── patches/                   # Git-format patches for upstream tracking
 │   ├── myron/                         # Redmi K90 Pro Max only (no vold patch, see README inside)
 │   ├── annibale/                      # Redmi K90 only (no vold patch, see README inside)
 │   ├── nezha/                         # Xiaomi 17 Ultra only: KeyMint environment patch
-│   └── neo8/                          # realme Neo8 only: KeyMint environment patch
+│   └── neo8/                          # realme Neo8 only: recovery overrides + KeyMint patch
 └── scripts/
     ├── apply-patches.sh               # One-click patch apply (common + one device)
     └── build.sh                       # Unified build entry
 ```
 
-Why patches are grouped by scope: the four devices use different secure-element stacks. myron/annibale use NXP KeyMint, whose environment comes from vendor properties, so stock vold is fine. On nezha (Thales/Goodix stack) and neo8 (QCOM TMS/SPU + OPlus weaver stack) the KeyMint environment comes from build properties and gets polluted by the recovery's spoofed platform version, so each needs its own environment-pinning patch. The sets are strictly isolated — a build applies `common` plus only the target device's own directory, so they never contaminate each other.
+Patches are grouped by scope because the devices use different security and recovery startup stacks. myron/annibale keep stock vold; nezha's Thales/Goodix decryption chain and Neo8's TMS/SPU, OPlus Weaver, DRM and init overrides live in separate device sets. Common recovery code exposes only generic hooks, and each build applies `common` plus one target device directory.
 
 ## Quick Start
 ### 1. Clone this repo next to your TWRP source tree
@@ -96,8 +96,7 @@ See [docs/PATCHES.md](docs/PATCHES.md) for details.
 - **UI adaptation**: Chinese strings, layout tweaks, status bar position for centered hole-punch displays
 - **Partition handling**: Virtual A/B partition aliases, dynamic partition flashing fixes
 - **Wi-Fi support** (myron/Neo8): in-recovery Wi-Fi framework, supplicant and DHCP client
-- **ST54 null-pointer crash fix** (`partition.cpp`, `gui.cpp`): fix crash when initializing the ST54 secure element on Xiaomi 17 Ultra (nezha)
-- **SELog suppression**: silence SELinux denials from ST54 DAC access during recovery boot (avoids hanging on the splash screen)
+- **Device hook isolation**: pre-decrypt waiting, retry and reboot cleanup use generic script names and run only when the target device tree provides them
 ### system/vold
 - **FBE/Weaver compatibility** (`Weaver1.cpp`, patches/common): Android 16 file-based encryption with Weaver/Keymaster decryption
 - **KeyMint environment patch** (`Decrypt.cpp`, `KeyStorage.cpp`; maintained separately under patches/neo8 and patches/nezha): pins the KeyMint environment (OS version / patch levels) to the installed system's real values before decryption, so the recovery's spoofed platform version is not treated as a newer environment that triggers key upgrades; includes `KM_TAG_FBE_ICE` for QTI wrapped keys and recovery-side upgrade write-back protection

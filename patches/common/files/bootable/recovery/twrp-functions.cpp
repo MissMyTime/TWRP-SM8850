@@ -639,7 +639,7 @@ int TWFunc::tw_reboot(RebootCommand command)
 		}
 	}
 
-	check_and_run_script("/system/bin/nezha-reboot-cleanup.sh", "nezha reboot cleanup");
+	check_and_run_script("/system/bin/twrp-reboot-cleanup.sh", "device reboot cleanup");
 
 // Clear BCB before any reboot to prevent bootloop back to recovery
 	Clear_Bootloader_Message();

@@ -672,8 +672,10 @@ void GUIAction::operation_end(const int operation_status)
 
 int GUIAction::reboot(std::string arg)
 {
-	if (arg.empty() || arg == "system") {
-		LOGINFO("Neo8 GUI system reboot: direct action entered\n");
+	const bool direct_system_reboot = android::base::GetBoolProperty(
+		"twrp.recovery.direct_system_reboot", false);
+	if (direct_system_reboot && (arg.empty() || arg == "system")) {
+		LOGINFO("Direct GUI system reboot entered\n");
 
 		// Leave WLAN idle, but never let a wedged WCN7750 command prevent the
 		// reboot syscall. Run cleanup in a child and cap it at one second.
@@ -695,7 +697,7 @@ int GUIAction::reboot(std::string arg)
 				usleep(50000);
 			}
 			if (!stopped) {
-				LOGERR("Neo8 reboot WLAN cleanup timed out; forcing restart path\n");
+				LOGERR("Reboot WLAN cleanup timed out; forcing restart path\n");
 				kill(wlan_pid, SIGKILL);
 				waitpid(wlan_pid, &status, 0);
 			}
@@ -720,21 +722,24 @@ int GUIAction::reboot(std::string arg)
 				usleep(50000);
 			}
 			if (!synced) {
-				LOGERR("Neo8 reboot sync timed out; continuing with kernel reboot\n");
+				LOGERR("Reboot sync timed out; continuing with kernel reboot\n");
 				kill(sync_pid, SIGKILL);
 				waitpid(sync_pid, &status, 0);
 			}
 		}
 
-		LOGINFO("Neo8 GUI system reboot: invoking kernel restart\n");
+		LOGINFO("Direct GUI system reboot: invoking kernel restart\n");
 		property_set("sys.powerctl", "reboot,");
 		if (::reboot(RB_AUTOBOOT) == 0)
 			return 0;
-		LOGERR("Neo8 kernel restart returned; handing off to recovery main loop\n");
+		LOGERR("Kernel restart returned; handing off to recovery main loop\n");
 	}
 
-	// The reboot worker performs the final flush and sync. Doing a global sync
-	// on the GUI thread can block indefinitely while MTP still has /data open.
+	if (!direct_system_reboot)
+		sync();
+
+	// The direct reboot worker performs its own bounded flush. Other devices
+	// retain the standard synchronous handoff.
 	DataManager::SetValue("tw_gui_done", 1);
 	DataManager::SetValue("tw_reboot_arg", arg);
 

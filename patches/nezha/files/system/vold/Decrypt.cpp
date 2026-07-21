@@ -106,7 +106,7 @@ using android::hardware::gatekeeper::V1_0::GatekeeperResponse;
 using GKResponse = ::android::service::gatekeeper::GateKeeperResponse;
 using GKResponseCode = ::android::service::gatekeeper::ResponseCode;
 
-static std::string readNeo8BuildProperty(const std::vector<std::string>& paths,
+static std::string readRecoveryBuildProperty(const std::vector<std::string>& paths,
 		const std::string& property_name) {
 	for (const auto& path : paths) {
 		std::string contents;
@@ -120,9 +120,9 @@ static std::string readNeo8BuildProperty(const std::vector<std::string>& paths,
 				line.pop_back();
 			if (line.rfind(prefix, 0) == 0 && line.size() > prefix.size()) {
 				const std::string value = line.substr(prefix.size());
-				printf("Neo8 KeyMint: read %s=%s from %s\n",
+				printf("Recovery KeyMint: read %s=%s from %s\n",
 				       property_name.c_str(), value.c_str(), path.c_str());
-				ALOGI("Neo8 KeyMint: read %s=%s from %s", property_name.c_str(),
+				ALOGI("Recovery KeyMint: read %s=%s from %s", property_name.c_str(),
 				      value.c_str(), path.c_str());
 				return value;
 			}
@@ -423,64 +423,6 @@ struct weaver_data_struct {
 	int slot;
 };
 
-static void Prepare_Neo8_Weaver_Backend() {
-	static bool prepared = false;
-	if (prepared)
-		return;
-
-	char device[PROPERTY_VALUE_MAX] = {};
-	property_get("ro.product.vendor.device", device, "");
-	if (strcmp(device, "u9") != 0 && strcmp(device, "RE6402L1") != 0 &&
-	    strcmp(device, "RMX8899") != 0)
-		return;
-
-	prepared = true;
-
-	mkdir("/mnt/vendor", 0755);
-	mkdir("/mnt/vendor/persist", 0755);
-	const char* persist_block = "/dev/block/bootdevice/by-name/persist";
-	if (access(persist_block, F_OK) != 0)
-		persist_block = "/dev/block/by-name/persist";
-	if (mount(persist_block, "/mnt/vendor/persist", "ext4",
-	          MS_NOATIME | MS_NOSUID | MS_NODEV, "barrier=1") != 0 &&
-	    errno != EBUSY) {
-		printf("Neo8: failed to mount persist at vendor path: %s\n", strerror(errno));
-	} else {
-		printf("Neo8: persist available at /mnt/vendor/persist\n");
-		mkdir("/persist", 0755);
-		struct stat vendor_persist = {};
-		struct stat legacy_persist = {};
-		bool same_mount = stat("/mnt/vendor/persist", &vendor_persist) == 0 &&
-		                  stat("/persist", &legacy_persist) == 0 &&
-		                  vendor_persist.st_dev == legacy_persist.st_dev &&
-		                  vendor_persist.st_ino == legacy_persist.st_ino;
-		if (!same_mount) {
-			if (mount("/mnt/vendor/persist", "/persist", nullptr, MS_BIND, nullptr) != 0) {
-				printf("Neo8: failed to bind persist compatibility path: %s\n",
-				       strerror(errno));
-			} else {
-				printf("Neo8: persist compatibility bind ready: /mnt/vendor/persist -> /persist\n");
-			}
-		} else {
-			printf("Neo8: /persist already points to the vendor persist mount\n");
-		}
-	}
-
-	mkdir("/data/vendor", 0755);
-	mkdir("/data/vendor/qwes", 0755);
-	chown("/data/vendor/qwes", 1000, 1000);
-	chmod("/data/vendor/qwes", 0755);
-
-	// ssgtzd was started from the recovery ramdisk before dynamic /vendor was
-	// mounted.  Restarting it now would fail because the mounted vendor image
-	// has no /vendor/bin/ssgtzd.  Its recovery TA configuration is installed
-	// before init starts it, so preserve that live backend and only refresh
-	// the /odm-hosted Weaver service after /data becomes available.
-	printf("Neo8: preserving preloaded ssgtzd and restarting Weaver after /data became available\n");
-	property_set("ctl.restart", "vendor.weaver_tms");
-	usleep(1000000);
-}
-
 /* C++ replacement for
  * https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/SyntheticPasswordManager.java#501
  * called here
@@ -595,11 +537,11 @@ namespace keystore {
 		char service_state[PROPERTY_VALUE_MAX] = {};
 
 		if (access(src, R_OK) != 0) {
-			printf("Neo8 keystore sync: source database is unavailable: %s\n", strerror(errno));
+			printf("Recovery keystore sync: source database is unavailable: %s\n", strerror(errno));
 			return false;
 		}
 
-		printf("Neo8 keystore sync: stopping keystore2 for a consistent SQLite backup\n");
+		printf("Recovery keystore sync: stopping keystore2 for a consistent SQLite backup\n");
 		property_set("ctl.stop", "keystore2");
 		for (int i = 0; i < 50; ++i) {
 			property_get("init.svc.keystore2", service_state, "");
@@ -615,7 +557,7 @@ namespace keystore {
 		bool success = keystore_info.backupDatabase(src, dst);
 		if (success) {
 			chmod(dst, 0600);
-			printf("Neo8 keystore sync: SQLite backup completed (including WAL state)\n");
+			printf("Recovery keystore sync: SQLite backup completed (including WAL state)\n");
 		}
 
 		property_set("ctl.start", "keystore2");
@@ -624,16 +566,16 @@ namespace keystore {
 			if (!strcmp(service_state, "running") &&
 			    AServiceManager_checkService(
 				    "android.system.keystore2.IKeystoreService/default") != nullptr) {
-				printf("Neo8 keystore sync: keystore2 restarted and registered\n");
+				printf("Recovery keystore sync: keystore2 restarted and registered\n");
 				return success;
 			}
 			usleep(100000);
 		}
-		printf("Neo8 keystore sync: keystore2 did not return in time\n");
+		printf("Recovery keystore sync: keystore2 did not return in time\n");
 		return false;
 	}
 
-	bool setNeo8KeyMintEnvironment(bool stock_environment) {
+	bool setRecoveryKeyMintEnvironment(bool stock_environment) {
 		const std::vector<std::string> system_props = {
 			"/system_root/system/build.prop",
 			"/system_root/build.prop",
@@ -648,17 +590,17 @@ namespace keystore {
 		// Always configure KeyMint with values from the installed stock ROM.
 		// A future patch level can make hardware-backed keys require an upgrade
 		// and leave the following Android boot unable to open those keys.
-		std::string os_version = android::base::GetProperty("twrp.neo8.osver", "");
+		std::string os_version = android::base::GetProperty("twrp.keymint.osver", "");
 		if (os_version.empty())
-			os_version = readNeo8BuildProperty(system_props, "ro.build.version.release");
+			os_version = readRecoveryBuildProperty(system_props, "ro.build.version.release");
 		if (os_version.empty())
 			os_version = android::base::GetProperty(
 				"ro.bootimage.build.version.release",
 				android::base::GetProperty("ro.build.version.release", "16"));
 
-		std::string os_patch = android::base::GetProperty("twrp.neo8.ospatch", "");
+		std::string os_patch = android::base::GetProperty("twrp.keymint.ospatch", "");
 		if (os_patch.empty())
-			os_patch = readNeo8BuildProperty(
+			os_patch = readRecoveryBuildProperty(
 				system_props, "ro.build.version.security_patch");
 		if (os_patch.empty())
 			os_patch = android::base::GetProperty(
@@ -666,13 +608,13 @@ namespace keystore {
 				android::base::GetProperty("ro.build.version.security_patch", ""));
 		if (os_patch.empty()) {
 			printf("KeyMint environment: stock OS patch level is unavailable\n");
-			ALOGE("Neo8 KeyMint: stock OS patch level is unavailable");
+			ALOGE("Recovery KeyMint: stock OS patch level is unavailable");
 			return false;
 		}
 
-		std::string vendor_patch = android::base::GetProperty("twrp.neo8.venpatch", "");
+		std::string vendor_patch = android::base::GetProperty("twrp.keymint.venpatch", "");
 		if (vendor_patch.empty())
-			vendor_patch = readNeo8BuildProperty(
+			vendor_patch = readRecoveryBuildProperty(
 				vendor_props, "ro.vendor.build.security_patch");
 		if (vendor_patch.empty())
 			vendor_patch = android::base::GetProperty(
@@ -687,14 +629,14 @@ namespace keystore {
 		       "(request=%s os=%s patch=%s vendor=%s)\n",
 		       request_name,
 		       os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
-		ALOGI("Neo8 KeyMint: using stock-derived values request=%s os=%s patch=%s vendor=%s",
+		ALOGI("Recovery KeyMint: using stock-derived values request=%s os=%s patch=%s vendor=%s",
 		      request_name, os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
 
-		property_set("twrp.nezha.keymint.request", request_name);
-		property_set("twrp.nezha.keymint.os_version", os_version.c_str());
-		property_set("twrp.nezha.keymint.os_patch", os_patch.c_str());
-		property_set("twrp.nezha.keymint.vendor_patch", vendor_patch.c_str());
-		property_set("twrp.nezha.keymint.ready", "0");
+		property_set("twrp.keymint.request", request_name);
+		property_set("twrp.keymint.os_version", os_version.c_str());
+		property_set("twrp.keymint.os_patch", os_patch.c_str());
+		property_set("twrp.keymint.vendor_patch", vendor_patch.c_str());
+		property_set("twrp.keymint.ready", "0");
 
 		property_set("ctl.stop", "keystore2");
 		property_set("ctl.stop", "vendor.keymint");
@@ -730,8 +672,8 @@ namespace keystore {
 			usleep(100000);
 		}
 		if (!keymint_ready) {
-			printf("Neo8 KeyMint environment: vendor.keymint failed to restart\n");
-			ALOGE("Neo8 KeyMint: vendor.keymint did not become ready");
+			printf("Recovery KeyMint environment: vendor.keymint failed to restart\n");
+			ALOGE("Recovery KeyMint: vendor.keymint did not become ready");
 			return false;
 		}
 
@@ -741,18 +683,18 @@ namespace keystore {
 			if (!strcmp(service_state, "running") &&
 			    AServiceManager_checkService(
 				    "android.system.keystore2.IKeystoreService/default") != nullptr) {
-				printf("Neo8 KeyMint environment switch complete "
+				printf("Recovery KeyMint environment switch complete "
 				       "(os=%s patch=%s vendor=%s)\n",
 				       os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
-				ALOGI("Neo8 KeyMint environment switch complete os=%s patch=%s vendor=%s",
+				ALOGI("Recovery KeyMint environment switch complete os=%s patch=%s vendor=%s",
 				      os_version.c_str(), os_patch.c_str(), vendor_patch.c_str());
-				property_set("twrp.nezha.keymint.ready", "1");
+				property_set("twrp.keymint.ready", "1");
 				return true;
 			}
 			usleep(100000);
 		}
-		printf("Neo8 KeyMint environment: keystore2 failed to restart\n");
-		ALOGE("Neo8 KeyMint: keystore2 did not become ready");
+		printf("Recovery KeyMint environment: keystore2 failed to restart\n");
+		ALOGE("Recovery KeyMint: keystore2 did not become ready");
 		return false;
 	}
 
@@ -807,9 +749,9 @@ namespace keystore {
 			KeystoreInfo keystore_info;
 			std::string handle = keystore_info.getHandle(user_id);
 			std::string keystore_alias = keystore_info.getAlias(handle);
-			printf("Neo8 keystore alias: '%s'\n", keystore_alias.c_str());
+			printf("Recovery keystore alias: '%s'\n", keystore_alias.c_str());
 			if (!syncKeystore2DbForDecrypt()) {
-				printf("Neo8 keystore sync failed\n");
+				printf("Recovery keystore sync failed\n");
 				return disk_decryption_secret_key;
 			}
 			int32_t error_code;
@@ -936,11 +878,11 @@ bool Is_Weaver(const std::string& spblob_path, const std::string& handle_str) {
 	};
 	for (const auto& weaver_file : weaver_file_paths) {
 		if (stat(weaver_file.c_str(), &st) == 0 && st.st_size > 0) {
-			printf("Neo8: Weaver metadata found at '%s'\n", weaver_file.c_str());
+			printf("Weaver metadata found at '%s'\n", weaver_file.c_str());
 			return true;
 		}
 	}
-	printf("Neo8: no Weaver metadata found for handle '%s'\n", handle_str.c_str());
+	printf("No Weaver metadata found for handle '%s'\n", handle_str.c_str());
 	return false;
 }
 
@@ -1005,13 +947,6 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 	char spblob_path_char[PATH_MAX];
 	sprintf(spblob_path_char, "/data/system_de/%d/spblob/", user_id);
 	std::string spblob_path = spblob_path_char;
-	struct stat st_spblob;
-	if (stat(spblob_path.c_str(), &st_spblob) != 0) {
-		// Neo8 compatibility: ColorOS/realme stores spblob files directly under /data/system_de/<user>/
-		sprintf(spblob_path_char, "/data/system_de/%d/", user_id);
-		spblob_path = spblob_path_char;
-		printf("Neo8: using direct system_de path for synth pass: %s\n", spblob_path.c_str());
-	}
 	long handle = 0;
 	// Get the handle: https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/LockSettingsService.java#2017
 	KeystoreInfo keystore_info;
@@ -1057,7 +992,6 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 		}
 		// Now we start driving weaverVerify: https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/SyntheticPasswordManager.java#343
 		// Called from https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/SyntheticPasswordManager.java#776
-		Prepare_Neo8_Weaver_Backend();
 		android::vold::Weaver weaver;
 		if (!weaver) {
 			printf("Failed to get weaver service\n");
@@ -1231,51 +1165,51 @@ bool Decrypt_User_Synth_Pass(const userid_t user_id, const std::string& Password
 	// Plus we will include the last bit that computes the disk decrypt key found in:
 	// https://android.googlesource.com/platform/frameworks/base/+/android-8.0.0_r23/services/core/java/com/android/server/locksettings/SyntheticPasswordManager.java#153
 	const bool metadata_uses_stock =
-		android::base::GetProperty("twrp.neo8.metadata_env", "high") == "stock";
-	if (!android::keystore::setNeo8KeyMintEnvironment(true)) {
+		android::base::GetProperty("twrp.keymint.metadata_env", "recovery") == "stock";
+	if (!android::keystore::setRecoveryKeyMintEnvironment(true)) {
 		printf("failed to select stock KeyMint environment for synthetic password\n");
 		if (!metadata_uses_stock)
-			android::keystore::setNeo8KeyMintEnvironment(false);
+			android::keystore::setRecoveryKeyMintEnvironment(false);
 		return Free_Return(retval, weaver_key, &pwd);
 	}
 	secret = android::keystore::unwrapSyntheticPasswordBlob(spblob_path, handle_str, user_id, (const void*)&application_id[0],
 		PASSWORD_TOKEN_SIZE + SHA512_DIGEST_LENGTH, auth_token_len);
 	bool stock_environment_active = true;
 	if (!secret.size()) {
-		printf("Neo8 synthetic password unwrap failed; attempting one KeyMint recovery retry\n");
+		printf("Synthetic password unwrap failed; attempting one KeyMint recovery retry\n");
 		bool retry_ready = true;
 		if (!metadata_uses_stock) {
-			retry_ready = android::keystore::setNeo8KeyMintEnvironment(false);
+			retry_ready = android::keystore::setRecoveryKeyMintEnvironment(false);
 			if (retry_ready) {
 				stock_environment_active = false;
 			} else {
-				printf("Neo8 KeyMint retry: failed to restore metadata/CE environment\n");
+				printf("KeyMint retry: failed to restore metadata/CE environment\n");
 			}
 		}
 		if (retry_ready) {
 			usleep(500000);
-			retry_ready = android::keystore::setNeo8KeyMintEnvironment(true);
+			retry_ready = android::keystore::setRecoveryKeyMintEnvironment(true);
 			if (retry_ready) {
 				stock_environment_active = true;
-				printf("Neo8 KeyMint retry: retrying synthetic password unwrap\n");
+				printf("KeyMint retry: retrying synthetic password unwrap\n");
 				secret = android::keystore::unwrapSyntheticPasswordBlob(
 					spblob_path, handle_str, user_id,
 					(const void*)&application_id[0],
 					PASSWORD_TOKEN_SIZE + SHA512_DIGEST_LENGTH,
 					auth_token_len);
 			} else {
-				printf("Neo8 KeyMint retry: failed to select stock-user-key environment\n");
+				printf("KeyMint retry: failed to select stock-user-key environment\n");
 			}
 		}
 	}
 	if (!secret.size()) {
 		printf("failed to unwrapSyntheticPasswordBlob\n");
 		if (!metadata_uses_stock && stock_environment_active)
-			android::keystore::setNeo8KeyMintEnvironment(false);
+			android::keystore::setRecoveryKeyMintEnvironment(false);
 		return Free_Return(retval, weaver_key, &pwd);
 	}
 
-	if (!metadata_uses_stock && !android::keystore::setNeo8KeyMintEnvironment(false)) {
+	if (!metadata_uses_stock && !android::keystore::setRecoveryKeyMintEnvironment(false)) {
 		printf("failed to restore metadata/CE KeyMint environment\n");
 		return Free_Return(retval, weaver_key, &pwd);
 	}
@@ -1292,13 +1226,6 @@ extern "C" int Get_Password_Type(const userid_t user_id, std::string& filename) 
 	char spblob_path_char[PATH_MAX];
 	sprintf(spblob_path_char, "/data/system_de/%d/spblob/", user_id);
 	std::string spblob_path = spblob_path_char;
-
-	if (stat(spblob_path.c_str(), &st) != 0) {
-		// Neo8 compatibility: ColorOS/realme stores spblob files directly under /data/system_de/<user>/
-		sprintf(spblob_path_char, "/data/system_de/%d/", user_id);
-		spblob_path = spblob_path_char;
-		printf("Neo8: using direct system_de path: %s\n", spblob_path.c_str());
-	}
 
 	if (stat(spblob_path.c_str(), &st) == 0) {
 		KeystoreInfo keystore_info;

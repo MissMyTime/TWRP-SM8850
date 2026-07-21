@@ -48,19 +48,19 @@ twrp_device_sm8850/
 │   └── realme/
 │       └── RE6402L1/                  # realme Neo8 设备树
 ├── patches/                           # TWRP源码修改补丁（按适用范围分类）
-│   ├── common/                        # 全机型通用：recovery框架 + Weaver重试
+│   ├── common/                        # 全机型通用：框架扩展点 + Weaver重试
 │   │   ├── files/                     # 修改后完整源码文件
 │   │   └── patches/                   # Git格式补丁，方便上游跟踪
 │   ├── myron/                         # Redmi K90 Pro Max 专属（无vold补丁，见目录内说明）
 │   ├── annibale/                      # Redmi K90 专属（无vold补丁，见目录内说明）
 │   ├── nezha/                         # Xiaomi 17 Ultra 专属：KeyMint环境补丁
-│   └── neo8/                          # realme Neo8 专属：KeyMint环境补丁
+│   └── neo8/                          # realme Neo8 专属：recovery覆盖 + KeyMint补丁
 └── scripts/
     ├── apply-patches.sh               # 一键应用源码补丁（common + 指定机型）
     └── build.sh                       # 统一编译入口脚本
 ```
 
-补丁按适用范围分类的原因：四台设备的安全芯片方案不同。myron/annibale 为 NXP KeyMint，环境值取自 vendor 属性，vold 保持原版即可；nezha（Thales/Goodix 栈）与 neo8（高通 TMS/SPU + OPlus weaver 栈）的 KeyMint 环境取自 build 属性，会被 recovery 伪装版本污染，各自需要专用的环境压制补丁。两类补丁严格隔离，编译时只应用 `common` + 目标机型自己的目录，互不污染。
+补丁按适用范围分类的原因：四台设备的安全芯片和 recovery 启动方案不同。myron/annibale 为 NXP KeyMint，vold 保持原版；nezha 的 Thales/Goodix 解密链和 Neo8 的 TMS/SPU、OPlus Weaver、DRM/init 覆盖分别放在各自目录。公共源码只保留通用钩子，编译时仅应用 `common` + 目标机型目录。
 
 ## 快速开始（Quick Start）
 ### 1. 克隆本仓库到TWRP源码同级目录
@@ -103,8 +103,7 @@ twrp_device_sm8850/scripts/build.sh RE6402L1 realme
 - **UI/界面适配**：中文字符串、布局调整，适配中置挖孔屏状态栏位置
 - **分区处理优化**：支持Virtual A/B分区别名，修复动态分区刷入问题
 - **Wi-Fi支持**（myron/Neo8）：Recovery下Wi-Fi框架、supplicant、DHCP客户端适配
-- **ST54空指针崩溃修复** (`partition.cpp`, `gui.cpp`)：修复小米17 Ultra（nezha）初始化ST54安全元件时的空指针崩溃
-- **SELog屏蔽**：屏蔽Recovery启动时ST54 DAC访问的SELinux拒绝日志，避免启动卡第一屏
+- **设备钩子隔离**：解密等待、失败重试和重启清理使用通用脚本名，仅在目标设备树提供脚本时执行
 ### system/vold 部分
 - **FBE/Weaver兼容** (`Weaver1.cpp`，patches/common)：适配Android 16文件级加密与Weaver/Keymaster解密
 - **KeyMint环境补丁** (`Decrypt.cpp`, `KeyStorage.cpp`，patches/neo8 与 patches/nezha 各自独立维护)：解密前将KeyMint环境（OS版本/补丁级别）压制为已安装系统的真实值，避免recovery伪装版本被当成新环境触发密钥升级；包含QTI wrapped-key所需的`KM_TAG_FBE_ICE`与升级写回保护

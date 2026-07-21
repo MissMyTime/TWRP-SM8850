@@ -20,7 +20,7 @@ mka recoveryimage -j$(nproc)
 输出文件：
 
 ```text
-out/target/product/myron/recovery.img
+out/target/product/annibale/recovery.img
 ```
 
 ## 注意事项

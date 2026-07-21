@@ -66,23 +66,15 @@ out/target/product/<codename>/recovery.img
 ## Flash
 
 ```bash
-fastboot flash recovery recovery.img
+fastboot flash recovery_ab recovery.img
 ```
 
 > **Note for Android 16 / boot header v4 devices:**
 > This device uses `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true`, meaning the
 > generated `recovery.img` is a **ramdisk-only image** (kernel resides in `vendor_boot`).
 > Therefore `fastboot boot recovery.img` (temporary boot) is **not supported** on most
-> Qualcomm SM8850 bootloaders. Always flash the recovery partition instead.
-
-```bash
-fastboot flash recovery recovery.img
-```
-
-Or temporarily boot:
-```bash
-fastboot boot recovery.img
-```
+> Qualcomm SM8850 bootloaders. These device trees use the A/B recovery partition,
+> so flash `recovery_ab`; temporary boot is not supported.
 
 ## Troubleshooting
 

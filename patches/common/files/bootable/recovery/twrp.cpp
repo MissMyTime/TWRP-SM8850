@@ -27,8 +27,7 @@
 #include <signal.h>
 #include <thread>
 #include <chrono>
-#include <android/binder_ibinder.h>
-#include <android/binder_manager.h>
+#include <android-base/properties.h>
 #include "recovery_utils/battery_utils.h"
 #include "gui/twmsg.h"
 
@@ -84,42 +83,45 @@ static void Print_Prop(const char *key, const char *name, void *cookie) {
 	printf("%s=%s\n", key, name);
 }
 
-static void Wait_For_Neo8_Touch() {
-	char device[PROPERTY_VALUE_MAX] = {};
-	property_get("ro.product.device", device, "");
-	if (strcmp(device, "RE6402L1") != 0 && strcmp(device, "RMX8899") != 0)
+static void Wait_For_Configured_Touch_Service() {
+	char service[PROPERTY_VALUE_MAX] = {};
+	property_get("twrp.recovery.touch_service", service, "");
+	if (service[0] == '\0')
 		return;
 
-	LOGINFO("Neo8: waiting up to 5 seconds for Oplus touch service\n");
+	const std::string state_property = "init.svc." + std::string(service);
+	LOGINFO("Waiting up to 5 seconds for touch service '%s'\n", service);
 	for (int retry = 0; retry < 250; ++retry) {
 		char state[PROPERTY_VALUE_MAX] = {};
-		property_get("init.svc.vendor.touch-aidl-1", state, "");
+		property_get(state_property.c_str(), state, "");
 		if (strcmp(state, "running") == 0) {
 			// Do not query the vendor Binder service from the splash thread.
 			// AServiceManager_checkService can block indefinitely while the
 			// vendor service manager is still settling, defeating this timeout.
 			usleep(300000);
-			LOGINFO("Neo8: Oplus touch service running; controller settled\n");
+			LOGINFO("Touch service is running; controller settled\n");
 			return;
 		}
 		usleep(20000);
 	}
-	LOGINFO("Neo8: touch service timed out after 5 seconds; continuing startup\n");
+	LOGINFO("Touch service timed out after 5 seconds; continuing startup\n");
 }
 
 static void Decrypt_Page(bool SkipDecryption, bool datamedia) {
-	// Neo8 metadata encryption can leave the generic TWRP encryption flags at
-	// zero until the first manual decrypt action.  Promote the device to the
-	// FBE path before testing TW_IS_ENCRYPTED, otherwise the initial credential
-	// preparation block is skipped entirely.
-	char fbe_contents[PROPERTY_VALUE_MAX] = {};
-	property_get("fbe.contents", fbe_contents, "");
-	if (fbe_contents[0] != '\0') {
-		if (!DataManager::GetIntValue(TW_IS_FBE))
-			LOGINFO("Neo8: FBE properties detected before encrypted-state gate\n");
-		DataManager::SetValue(TW_IS_FBE, 1);
-		DataManager::SetValue(TW_IS_ENCRYPTED, 1);
-		DataManager::SetValue("tw_crypto_user_id", "0");
+	const bool prepare_fbe = android::base::GetBoolProperty(
+		"twrp.recovery.prepare_fbe", false);
+	if (prepare_fbe) {
+		// Some metadata-encrypted devices leave the generic TWRP encryption flags
+		// unset until the first manual decrypt action.
+		char fbe_contents[PROPERTY_VALUE_MAX] = {};
+		property_get("fbe.contents", fbe_contents, "");
+		if (fbe_contents[0] != '\0') {
+			if (!DataManager::GetIntValue(TW_IS_FBE))
+				LOGINFO("FBE properties detected before encrypted-state gate\n");
+			DataManager::SetValue(TW_IS_FBE, 1);
+			DataManager::SetValue(TW_IS_ENCRYPTED, 1);
+			DataManager::SetValue("tw_crypto_user_id", "0");
+		}
 	}
 
 	// Offer to decrypt if the device is encrypted
@@ -132,13 +134,11 @@ static void Decrypt_Page(bool SkipDecryption, bool datamedia) {
 			LOGINFO("Skipping decryption\n");
 			PartitionManager.Update_System_Details();
 		} else {
-			// Neo8 metadata encryption hides the synthetic-password files until
-			// /data is mounted through the metadata key.  Prepare that layer
-			// before selecting the first credential page so pattern/PIN type is
-			// correct on the initial recovery boot.
-			if (DataManager::GetIntValue(TW_IS_FBE) &&
+			// Opt-in metadata preparation exposes the synthetic-password files
+			// before selecting the first credential page.
+			if (prepare_fbe && DataManager::GetIntValue(TW_IS_FBE) &&
 			    DataManager::GetIntValue(TW_CRYPTO_PWTYPE) == 0) {
-				LOGINFO("Neo8: preparing metadata/FBE before initial credential page\n");
+				LOGINFO("Preparing metadata/FBE before initial credential page\n");
 				PartitionManager.Decrypt_Data();
 			}
 
@@ -382,8 +382,10 @@ static void reboot() {
 	gui_msg(Msg("rebooting=Rebooting..."));
 	string Reboot_Arg;
 	DataManager::GetValue("tw_reboot_arg", Reboot_Arg);
-	if (Reboot_Arg.empty() || Reboot_Arg == "system") {
-		LOGINFO("Neo8 direct system reboot: bypassing recovery filesystem cleanup\n");
+	if (android::base::GetBoolProperty(
+			"twrp.recovery.direct_system_reboot", false) &&
+			(Reboot_Arg.empty() || Reboot_Arg == "system")) {
+		LOGINFO("Direct system reboot: bypassing recovery filesystem cleanup\n");
 		property_set("sys.powerctl", "reboot,");
 #ifdef ANDROID_RB_RESTART
 		android_reboot(ANDROID_RB_RESTART, 0, 0);
@@ -392,6 +394,7 @@ static void reboot() {
 #endif
 		return;
 	}
+	TWFunc::Update_Log_File();
 	if (Reboot_Arg == "recovery")
 		TWFunc::tw_reboot(rb_recovery);
 	else if (Reboot_Arg == "poweroff")
@@ -482,7 +485,7 @@ int main(int argc, char **argv) {
 
 	printf("Starting the UI...\n");
 	gui_init();
-	Wait_For_Neo8_Touch();
+	Wait_For_Configured_Touch_Service();
 
 #ifndef TW_SKIP_POST_GUI_FSTAB_SETUP
 	if (!startup.Get_Fastboot_Mode()) PartitionManager.Setup_Fstab_Partitions(true);
