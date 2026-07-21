@@ -2,6 +2,7 @@ TWRP 16 Reboot Patch — Xiaomi 17 Ultra (nezha)
 =================================================
 
 ## Patch 1: Clear BCB before any reboot
+
 File: bootable/recovery/twrp-functions.cpp
 
 Before:
@@ -22,6 +23,7 @@ After:
 ```
 
 ## Patch 2: "Reboot to fastboot" → real bootloader fastboot
+
 File: bootable/recovery/twrp-functions.cpp
 
 On this device, `reboot,fastboot` enters fastbootd (recovery-based fastboot),

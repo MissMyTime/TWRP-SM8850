@@ -61,30 +61,35 @@
 | FBE Policy | `fscrypt_policy_v2` |
 | Keymaster | Vendor Keymint (QTI) |
 | OMAPI | Enabled (`636F6D2E6E78702E7365637572697479`) |
-| Weaver | QTI implementation (secure element) |
+| StrongBox / Weaver | TMS secure-element services (`vendor.weaver_tms`) with SPU support components |
 | SELinux | Permissive in recovery |
 
 ## Prebuilt Components
 
 ### `prebuilt/kernel/`
+
 Prebuilt kernel image (Image, boot header v4).
 
 ### `prebuilt/odm/firmware/secure_ta/`
+
 TrustZone / Secure TA firmware blobs for keymint, weaver, crypto, FIDO, etc.
 
 ### `prebuilt/sbin/`
+
 - `neo8_wifi_hal_client`: Wi-Fi HAL client for recovery
 - `wifi-dhcp.sh`: DHCP script for Wi-Fi
 - `wifi-load-modules.sh`: Kernel module loader for Wi-Fi
 - `vendor/etc/vintf/`: Wi-Fi supplicant manifest
 
 ### `prebuilt/system/`
+
 - Boot service (recovery variant)
 - Health service (recovery variant)
 - SELinux policy contexts
 - VINTF manifests
 
 ### `prebuilt/vendor/`
+
 - Boot service
 - Gatekeeper (Rust + legacy)
 - Health service
@@ -96,6 +101,7 @@ TrustZone / Secure TA firmware blobs for keymint, weaver, crypto, FIDO, etc.
 - `odm` overlay
 
 ### `prebuilt/system_ext/`
+
 System extension prebuilts for recovery.
 
 ## Recovery Init Scripts
@@ -112,6 +118,7 @@ System extension prebuilts for recovery.
 ## Touch Stack
 
 OPlus touch service integration:
+
 - `vendor.oplus.hardware.touch` AIDL HAL
 - TensorFlow Lite touch model
 - Touch firmware config (`synaptics` / `fts` depending on variant)
@@ -132,7 +139,7 @@ OPlus touch service integration:
 
 ```bash
 source build/envsetup.sh
-lunch twrp_RE6402L1-eng
+lunch twrp_RE6402L1-bp2a-eng
 mka recoveryimage
 ```
 
@@ -170,7 +177,6 @@ device/realme/RE6402L1/
 │       ├── init.recovery.qcom.rc
 │       ├── init.recovery.usb.rc
 │       ├── ueventd.qcom.rc
-│       ├── odm/          (symlinks to /vendor/odm/*)
 │       └── system/bin/
 │           ├── neo8-early-mount.sh
 │           ├── neo8-partition-links.sh

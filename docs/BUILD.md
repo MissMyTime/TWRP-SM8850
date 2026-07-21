@@ -2,9 +2,11 @@
 
 ## Environment
 
-**Recommended:** WSL2 + Ubuntu 24.04
+- WSL2 or native Ubuntu 24.04
+- 64 GB RAM recommended, or sufficient swap
+- At least 200 GB of free disk space
 
-## Prerequisites
+## Install dependencies
 
 ```bash
 sudo apt update
@@ -12,75 +14,112 @@ sudo apt install -y git-core gnupg flex bison build-essential zip curl \
     zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 \
     libncurses5-dev lib32ncurses5-dev x11proto-core-dev libx11-dev \
     lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig \
-    repo bc ccache
+    repo bc ccache rsync
 ```
 
-## Initialize TWRP Source
+## Initialize the TWRP source tree
 
 ```bash
-mkdir -p ~/android/twrp && cd ~/android/twrp
+mkdir -p ~/android/twrp
+cd ~/android/twrp
 repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-16
 repo sync -c --no-tags --no-clone-bundle -j$(nproc)
 ```
 
-## Clone This Repository
+## Clone this repository
+
+Clone it inside the TWRP source root so the device paths resolve as expected:
 
 ```bash
 cd ~/android/twrp
 git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 ```
 
-## Apply Source Changes
+## Registered build targets
+
+| Device | Codename | Lunch target |
+|---|---|---|
+| Redmi K90 | `annibale` | `twrp_annibale-bp2a-eng` |
+| Redmi K90 Pro Max | `myron` | `twrp_myron-bp2a-eng` |
+| Xiaomi 17 Ultra | `nezha` | `twrp_nezha-bp2a-eng` |
+| realme Neo8 | `RE6402L1` | `twrp_RE6402L1-bp2a-eng` |
+
+## Apply source changes
+
+For a manual build, first copy the selected device tree to the path expected by the Android build system. Example for Myron:
+
+```bash
+cd ~/android/twrp
+mkdir -p device/xiaomi/myron
+rsync -a twrp_device_sm8850/device/xiaomi/myron/ device/xiaomi/myron/
+```
+
+Then apply the source changes:
 
 ```bash
 cd ~/android/twrp
 twrp_device_sm8850/scripts/apply-patches.sh . <codename>
 ```
 
-The second argument is the device codename (`myron` / `annibale` / `nezha` / `RE6402L1`). The script will:
+The codename may be `myron`, `annibale`, `nezha`, `RE6402L1` or `neo8`. The script applies the common set first, then only the selected device set:
 
-1. Apply git patches from `patches/common/patches/`, then copy the full source files from `patches/common/files/`
-2. Do the same for `patches/<device>/` if that directory contains device-specific patches
+1. Apply Git-format patches when the target source repository matches.
+2. Copy the maintained full source files to produce the exact expected tree.
 
-Only `nezha` and `neo8` carry device-specific vold patches today; `myron` and `annibale` intentionally use stock vold plus the common Weaver1.cpp (see each directory's README).
+Myron and Annibale intentionally use stock vold plus the common `Weaver1.cpp`. Nezha and Neo8 each carry a separate device-specific vold implementation.
 
-## Build
-
-```bash
-source build/envsetup.sh
-lunch twrp_<codename>-eng
-mka recoveryimage
-```
+## Build manually
 
 Example for realme Neo8:
+
 ```bash
-lunch twrp_RE6402L1-eng
+cd ~/android/twrp
+source build/envsetup.sh
+lunch twrp_RE6402L1-bp2a-eng
 mka recoveryimage
 ```
 
-Output path:
+Output:
+
+```text
+out/target/product/RE6402L1/recovery.img
 ```
-out/target/product/<codename>/recovery.img
+
+Replace the lunch target and product directory with the values from the table for another device.
+
+## Use the unified build script
+
+The script synchronizes the selected device tree, applies the correct patch sets and builds the BP2A product target:
+
+```bash
+cd ~/android/twrp
+twrp_device_sm8850/scripts/build.sh RE6402L1
+```
+
+The vendor directory is detected automatically. A different registered lunch target can be selected explicitly:
+
+```bash
+LUNCH_TARGET=twrp_myron-eng twrp_device_sm8850/scripts/build.sh myron
 ```
 
 ## Flash
 
+Confirm the codename, unlock the bootloader and back up important data first.
+
 ```bash
+adb reboot bootloader
 fastboot flash recovery_ab recovery.img
+fastboot reboot recovery
 ```
 
-> **Note for Android 16 / boot header v4 devices:**
-> This device uses `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true`, meaning the
-> generated `recovery.img` is a **ramdisk-only image** (kernel resides in `vendor_boot`).
-> Therefore `fastboot boot recovery.img` (temporary boot) is **not supported** on most
-> Qualcomm SM8850 bootloaders. These device trees use the A/B recovery partition,
-> so flash `recovery_ab`; temporary boot is not supported.
+All four device trees use A/B recovery partitions. They also set `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true`, so the generated image is ramdisk-only and the kernel remains in `vendor_boot`. Most affected bootloaders cannot temporarily boot this image with `fastboot boot recovery.img`.
 
 ## Troubleshooting
 
-### WSL2 Out of Memory
+### WSL2 runs out of memory
 
-Create `~/.wslconfig`:
+Create or update `%UserProfile%\.wslconfig` on Windows:
+
 ```ini
 [wsl2]
 memory=64GB
@@ -88,10 +127,12 @@ swap=32GB
 processors=16
 ```
 
-### Symlinks on Windows
+Run `wsl --shutdown` from PowerShell before starting the build again.
 
-If you cloned this repo on Windows and then copied to WSL2, symbolic links in `device/<vendor>/<codename>/recovery/root/odm/` may be broken. On WSL2, re-clone or use:
-```bash
-git config core.symlinks true
-git checkout .
-```
+### A patch no longer matches
+
+Use the TWRP 16 branch specified above and start from a clean source checkout. The apply script stops when a Git patch does not match instead of silently applying a partial change.
+
+### Wrong lunch target
+
+Use the exact BP2A target from the table. In particular, Neo8 registers `twrp_RE6402L1-bp2a-eng`, not `twrp_RE6402L1-eng`.

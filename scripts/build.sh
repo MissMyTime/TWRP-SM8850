@@ -10,6 +10,7 @@ REPO_ROOT="${SCRIPT_DIR}/.."
 CODENAME="${1:-}"
 VENDOR="${2:-}"
 TWRP_SOURCE="${TWRP_SOURCE:-$(pwd)}"
+LUNCH_TARGET="${LUNCH_TARGET:-twrp_${CODENAME}-bp2a-eng}"
 
 if [ -z "$CODENAME" ]; then
     echo "Usage: ./scripts/build.sh <codename> [vendor]"
@@ -50,13 +51,30 @@ if [ ! -f "$TWRP_SOURCE/build/envsetup.sh" ]; then
     exit 1
 fi
 
+TWRP_SOURCE="$(cd "$TWRP_SOURCE" && pwd)"
+DEVICE_PATH="$(cd "$DEVICE_PATH" && pwd)"
+TARGET_DEVICE_PATH="$TWRP_SOURCE/device/$VENDOR/$CODENAME"
+
 echo "========================================"
 echo "Building TWRP for: $CODENAME"
 echo "Vendor: $VENDOR"
 echo "Device path: $DEVICE_PATH"
 echo "TWRP source: $TWRP_SOURCE"
+echo "Lunch target: $LUNCH_TARGET"
 echo "========================================"
 echo ""
+
+# Install the selected tree at the path expected by Android's product loader.
+if [ "$DEVICE_PATH" != "$TARGET_DEVICE_PATH" ]; then
+    echo "Syncing device tree to: $TARGET_DEVICE_PATH"
+    mkdir -p "$TARGET_DEVICE_PATH"
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a "$DEVICE_PATH/" "$TARGET_DEVICE_PATH/"
+    else
+        cp -a "$DEVICE_PATH/." "$TARGET_DEVICE_PATH/"
+    fi
+    echo ""
+fi
 
 # Apply source changes
 "$SCRIPT_DIR/apply-patches.sh" "$TWRP_SOURCE" "$CODENAME"
@@ -64,7 +82,7 @@ echo ""
 # Build
 cd "$TWRP_SOURCE"
 source build/envsetup.sh
-lunch "twrp_${CODENAME}-eng"
+lunch "$LUNCH_TARGET"
 mka recoveryimage
 
 echo ""

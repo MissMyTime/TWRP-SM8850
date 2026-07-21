@@ -1,17 +1,83 @@
 # Xiaomi 17 Ultra (nezha)
-Xiaomi SM8850 (canoe) platform device tree for Xiaomi 17 Ultra.
 
-## Key Fixes
-- ST54 secure element DAC initialization null pointer crash fix
-- SELinux log (SELog) guard for ST54 DAC access, prevents early recovery boot hang
-- Thales strongbox weaver/keymint recovery service support
-- Key storage safety patches for Android 16 FBE decryption
-- Prebuilt ST54 GPIO kernel module included
+## Device information
 
-## Status
-- FBE decryption: Working
-- Touch/Display: Working
-- Secure element/Weaver: Working (with ST54 fixes)
-- MTP/ADB: Working
+| Parameter | Value |
+|---|---|
+| Product | Xiaomi 17 Ultra |
+| Codename | `nezha` |
+| Product platform | `canoe` |
+| Board platform | `sm8850` |
+| Architecture | arm64 |
+| Shipping API | 36 |
+| Display | 1200 × 2608, 480 dpi |
+| Recovery partition | 104857600 bytes (100 MiB), A/B |
+| Super partition | 15300820992 bytes (14.25 GiB) |
+| Userdata / metadata | F2FS |
+| Build target | `twrp_nezha-bp2a-eng` |
 
-See [realme-neo8.md](realme-neo8.md) for full documentation template.
+## Encryption and security services
+
+Nezha variants carry different secure-element components. The device tree contains the Goodix recovery service and the Thales Weaver/ST54 files required by the final device fix.
+
+| Component | Recovery implementation |
+|---|---|
+| Default KeyMint | QTI `onekeymint-service-qti` |
+| Weaver service assets | Goodix and Thales recovery binaries |
+| Secure element assets | Goodix eSE and ST54 support |
+| FBE policy | fscrypt policy v2 with wrapped keys |
+| Device vold set | `patches/nezha` |
+
+The recovery gate records the detected route as follows:
+
+- `25128PNA1C` or hardware version `5.9.7`: `leica_597`
+- `2512BPNDAC` or hardware version `5.9.0`: `normal_590`
+
+The routes use separate startup timing and retry limits before credential verification.
+
+## Final decryption fixes
+
+- Thales Weaver recovery service and supporting libraries
+- `stm_st54se_gpio.ko` for ST54 secure-element access
+- ST54 DAC/SELog safety handling
+- KeyMint environment selection based on the installed system version and patch levels
+- Key-storage upgrade write-back protection
+- Pre-decrypt waiting, failure retry and reboot cleanup hooks
+- Recovery settings stored under `/data/recovery/TWRP` instead of vendor persist
+
+## Build
+
+```bash
+cd ~/android/twrp
+source build/envsetup.sh
+lunch twrp_nezha-bp2a-eng
+mka recoveryimage
+```
+
+Output:
+
+```text
+out/target/product/nezha/recovery.img
+```
+
+The unified build script may also be used:
+
+```bash
+twrp_device_sm8850/scripts/build.sh nezha
+```
+
+## Flash
+
+```bash
+adb reboot bootloader
+fastboot flash recovery_ab recovery.img
+fastboot reboot recovery
+```
+
+`fastboot boot recovery.img` is not supported because the generated recovery image is ramdisk-only.
+
+## Notes
+
+- `TW_NO_AUTO_DECRYPT := true`: start decryption manually from TWRP when required.
+- The Nezha `Decrypt.cpp` and `KeyStorage.cpp` files must remain in `patches/nezha`; do not move them into the common set.
+- Reboot cleanup releases recovery-owned secure-element sessions before Android starts.

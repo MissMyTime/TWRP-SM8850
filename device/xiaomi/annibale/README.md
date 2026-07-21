@@ -31,3 +31,4 @@ out/target/product/annibale/recovery.img
 adb reboot bootloader
 fastboot flash recovery_ab recovery.img
 fastboot reboot recovery
+```

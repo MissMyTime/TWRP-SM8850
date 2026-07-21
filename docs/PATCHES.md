@@ -60,7 +60,7 @@ Weaver HAL retry/wait adjustment, needed by all four devices regardless of secur
 
 `Decrypt.cpp` + `KeyStorage.cpp`: before decryption, pin the KeyMint environment (OS version / OS patch level / vendor patch level) to the installed system's real values, so the recovery's spoofed platform version (`99.87.36` / `2099-12-31`) is not treated as a newer environment that would trigger a KeyMint key upgrade on every boot. Values can be overridden via `twrp.keymint.osver/ospatch/venpatch`.
 
-**Do not apply these to myron/annibale.** Those two devices use NXP KeyMint, which takes its environment from vendor properties; the spoofed recovery version never reaches KeyMint, and this environment-switching logic would only invent inconsistent environments there.
+**Do not apply these to myron/annibale.** Their default KeyMint services are QTI, while StrongBox/Weaver use NXP backends. The default KeyMint environment comes from vendor properties, so the spoofed recovery version never reaches it; this environment-switching logic would only invent inconsistent environments there.
 
 ## How to Apply
 

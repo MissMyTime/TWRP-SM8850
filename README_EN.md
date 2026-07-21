@@ -1,125 +1,169 @@
-# SM8850 TWRP Device Trees & Source Changes
-> TWRP device trees and TWRP source patches for Qualcomm SM8850 (Snapdragon 8 Elite Gen 5 / canoe) devices
+# SM8850 / Android 16 TWRP Device Trees and Source Patches
+
+> TWRP 3.7.1 device trees for recent Xiaomi and realme platforms
+
+[![Patch isolation](https://github.com/MissMyTime/twrp_device_sm8850/actions/workflows/patch-isolation.yml/badge.svg)](https://github.com/MissMyTime/twrp_device_sm8850/actions/workflows/patch-isolation.yml)
+[![Issues](https://img.shields.io/github/issues/MissMyTime/twrp_device_sm8850)](https://github.com/MissMyTime/twrp_device_sm8850/issues)
+
+This repository contains four complete device trees and the TWRP source changes required for Android 16 / API 36 / BP2A. Device-specific decryption, startup and graphics changes are isolated so each build receives only the common patch set and its own device patch set.
 
 [中文说明](./README.md)
 
-TWRP adaptation for devices on the Qualcomm SM8850 (canoe) platform, targeting **Android 16 / API 36 / BP2A** with **Virtual A/B** partitions. Devices already adapted are listed below; other SM8850 devices can be requested via Issues.
+## Supported devices
 
-## Supported Devices
-| Vendor | Device | Codename | Status |
-|--------|--------|----------|--------|
-| Xiaomi | Redmi K90 | annibale | Supported |
-| Xiaomi | Redmi K90 Pro Max | myron | Supported |
-| Xiaomi | Xiaomi 17 Ultra | nezha | Supported |
-| realme | realme Neo8 | RE6402L1 | Supported |
+| Vendor | Device | Codename | Platform | Lunch target | Security backend | Status |
+|---|---|---|---|---|---|---|
+| Xiaomi | Redmi K90 | `annibale` | `sun` | `twrp_annibale-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | Supported |
+| Xiaomi | Redmi K90 Pro Max | `myron` | `sm8850 / canoe` | `twrp_myron-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | Supported |
+| Xiaomi | Xiaomi 17 Ultra | `nezha` | `sm8850 / canoe` | `twrp_nezha-bp2a-eng` | QTI KeyMint + Thales/Goodix components | Supported |
+| realme | realme Neo8 | `RE6402L1` | `canoe` | `twrp_RE6402L1-bp2a-eng` | QTI KeyMint + TMS/SPU Weaver | Supported |
 
-## Discussion
-- XDA: [TWRP for POCO F8 Ultra / Redmi K90 Pro Max (myron)](https://xdaforums.com/t/twrp-3-7-1-for-poco-f8-ultra-redmi-k90-pro-max-myron-android-16-fbe-decrypt.4795272/)
-- XDA: [TWRP for Xiaomi 17 Ultra (nezha)](https://xdaforums.com/t/twrp-3-7-1-for-xiaomi-17-ultra-nezha-android-16-fbe-decrypt.4795275/)
-- XDA: [TWRP for realme Neo8 (RE6402L1)](https://xdaforums.com/t/twrp-3-7-1-for-realme-neo8-re6402l1-android-16-fbe-decrypt.4795276/)
-- 4PDA: [Realme Neo 8 discussion thread](https://4pda.to/forum/index.php?showtopic=1109949)
+All four devices use A/B recovery partitions. The generated `recovery.img` is ramdisk-only and should be flashed to `recovery_ab`; temporary boot with `fastboot boot recovery.img` is not recommended.
 
-## Repository Layout
-```
-twrp_device_sm8850/
-├── README.md                          # Chinese documentation
-├── README_EN.md                       # This file
-├── docs/                              # Per-device documentation
-│   ├── BUILD.md                       # Build guide (WSL2, dependencies)
-│   ├── PATCHES.md                     # Detailed patch descriptions
-│   ├── xiaomi-annibale.md
-│   ├── xiaomi-myron.md
-│   ├── xiaomi-nezha.md
-│   └── realme-neo8.md
-├── device/                            # Device trees
-│   ├── qcom/
-│   │   └── sm8850-common/             # (planned) SM8850 common board config
-│   ├── xiaomi/
-│   │   ├── annibale/                  # Redmi K90
-│   │   ├── myron/                     # Redmi K90 Pro Max
-│   │   └── nezha/                     # Xiaomi 17 Ultra
-│   └── realme/
-│       └── RE6402L1/                  # realme Neo8
-├── patches/                           # TWRP source patches (grouped by scope)
-│   ├── common/                        # All devices: framework hooks + Weaver retry
-│   │   ├── files/                     # Full patched source files
-│   │   └── patches/                   # Git-format patches for upstream tracking
-│   ├── myron/                         # Redmi K90 Pro Max only (no vold patch, see README inside)
-│   ├── annibale/                      # Redmi K90 only (no vold patch, see README inside)
-│   ├── nezha/                         # Xiaomi 17 Ultra only: KeyMint environment patch
-│   └── neo8/                          # realme Neo8 only: recovery overrides + KeyMint patch
-└── scripts/
-    ├── apply-patches.sh               # One-click patch apply (common + one device)
-    └── build.sh                       # Unified build entry
-```
+## Quick start
 
-Patches are grouped by scope because the devices use different security and recovery startup stacks. myron/annibale keep stock vold; nezha's Thales/Goodix decryption chain and Neo8's TMS/SPU, OPlus Weaver, DRM and init overrides live in separate device sets. Common recovery code exposes only generic hooks, and each build applies `common` plus one target device directory.
+### 1. Prepare the TWRP source tree
 
-## Quick Start
-### 1. Clone this repo next to your TWRP source tree
+See the full [build guide](docs/BUILD.md). The commands below assume the source tree is located at `~/android/twrp`.
+
+### 2. Clone this repository into the TWRP source root
+
 ```bash
 cd ~/android/twrp
 git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 ```
-### 2. Apply the source patches
-The second argument is the device codename (myron / annibale / nezha / RE6402L1). The script applies `patches/common` first, then that device's own patch directory:
+
+### 3. Synchronize the target device tree
+
+For a manual build, copy the selected tree into its standard path under the source root:
+
+```bash
+cd ~/android/twrp
+mkdir -p device/xiaomi/myron
+rsync -a twrp_device_sm8850/device/xiaomi/myron/ device/xiaomi/myron/
+```
+
+Replace the vendor directory and codename for other devices.
+
+### 4. Apply the source changes for one device
+
 ```bash
 cd ~/android/twrp
 twrp_device_sm8850/scripts/apply-patches.sh . myron
 ```
-### 3. Build recovery for a device
+
+The device argument accepts `myron`, `annibale`, `nezha`, `RE6402L1` and `neo8`. The script applies `patches/common` first and then only the selected device set.
+
+### 5. Build
+
+Manual build:
+
 ```bash
 cd ~/android/twrp
 source build/envsetup.sh
-lunch twrp_RE6402L1-eng
+lunch twrp_myron-bp2a-eng
 mka recoveryimage
 ```
-Or use the one-click build script:
+
+Or use the unified build script. It detects the vendor directory, synchronizes the selected device tree, applies the matching patches and starts the build:
+
 ```bash
 cd ~/android/twrp
-twrp_device_sm8850/scripts/build.sh RE6402L1 realme
+twrp_device_sm8850/scripts/build.sh myron
 ```
 
-## Build Requirements
-- Recommended environment: WSL2 + Ubuntu 24.04
-- RAM: 64 GB+ recommended (or equivalent swap)
-- Disk: 200 GB+ free space
-- Full setup guide: [docs/BUILD.md](docs/BUILD.md)
+Set `LUNCH_TARGET` to select the lunch target explicitly:
 
-## Source Changes Summary
-See [docs/PATCHES.md](docs/PATCHES.md) for details.
-### bootable/recovery (patches/common)
-- **Slot detection fix** (`twinstall.cpp`): correct Virtual A/B slot detection to avoid flashing the wrong slot
-- **Auto re-flash TWRP** (`action.cpp`): back up recovery before a ROM flash and restore it to both slots afterwards, so stock ROMs don't overwrite TWRP
-- **Clear bootloader messages** (`twrp-functions.cpp`): clear stale bootloader error messages before reboot to avoid boot hangs
-- **Fastboot reboot fix** (`twrp-functions.cpp`): fix `rb_fastboot` using the wrong property
-- **UI adaptation**: Chinese strings, layout tweaks, status bar position for centered hole-punch displays
-- **Partition handling**: Virtual A/B partition aliases, dynamic partition flashing fixes
-- **Wi-Fi support** (myron/Neo8): in-recovery Wi-Fi framework, supplicant and DHCP client
-- **Device hook isolation**: pre-decrypt waiting, retry and reboot cleanup use generic script names and run only when the target device tree provides them
-### system/vold
-- **FBE/Weaver compatibility** (`Weaver1.cpp`, patches/common): Android 16 file-based encryption with Weaver/Keymaster decryption
-- **KeyMint environment patch** (`Decrypt.cpp`, `KeyStorage.cpp`; maintained separately under patches/neo8 and patches/nezha): pins the KeyMint environment (OS version / patch levels) to the installed system's real values before decryption, so the recovery's spoofed platform version is not treated as a newer environment that triggers key upgrades; includes `KM_TAG_FBE_ICE` for QTI wrapped keys and recovery-side upgrade write-back protection
-- **No vold patch for myron/annibale**: both NXP KeyMint devices take their environment from vendor properties, so the recovery's spoofed version never reaches KeyMint; stock vold + Weaver1.cpp is the verified stable combination
+```bash
+LUNCH_TARGET=twrp_myron-bp2a-eng twrp_device_sm8850/scripts/build.sh myron
+```
 
-## Device-specific Notes
-Each device has its own document under `docs/` covering:
-- Partition table and sizes
-- FBE / Keymaster / Weaver support status
-- Known issues and workarounds
-- Notes on prebuilt binaries (keymint, weaver, touchscreen, etc.)
+## Flashing
+
+Verify the device codename, unlock the bootloader and back up important data before flashing.
+
+```bash
+adb reboot bootloader
+fastboot flash recovery_ab recovery.img
+fastboot reboot recovery
+```
+
+Build output is written to `out/target/product/<codename>/recovery.img`.
+
+## Repository layout
+
+```text
+twrp_device_sm8850/
+├── README.md
+├── README_EN.md
+├── device/
+│   ├── xiaomi/
+│   │   ├── annibale/
+│   │   ├── myron/
+│   │   └── nezha/
+│   └── realme/
+│       └── RE6402L1/
+├── patches/
+│   ├── common/              # Shared recovery changes
+│   ├── annibale/            # Redmi K90 notes and device changes
+│   ├── myron/               # Redmi K90 Pro Max notes and device changes
+│   ├── nezha/               # Xiaomi 17 Ultra decryption changes
+│   └── neo8/                # realme Neo8 recovery/vold changes
+├── docs/
+│   ├── BUILD.md
+│   ├── PATCHES.md
+│   ├── xiaomi-annibale.md
+│   ├── xiaomi-myron.md
+│   ├── xiaomi-nezha.md
+│   └── realme-neo8.md
+└── scripts/
+    ├── apply-patches.sh
+    ├── build.sh
+    └── check-patch-isolation.sh
+```
+
+## Patch scope
+
+- `patches/common`: shared recovery framework, partition handling, UI, reboot and Weaver extension points.
+- `patches/myron` and `patches/annibale`: stock vold; no KeyMint environment switching from another device.
+- `patches/nezha`: Xiaomi 17 Ultra KeyMint environment and key-storage protection.
+- `patches/neo8`: realme Neo8 TMS/SPU, OPlus Weaver, DRM, init and KeyMint changes.
+
+See [PATCHES.md](docs/PATCHES.md) for details. The Patch isolation workflow checks that common and per-device directories do not acquire cross-device implementations.
+
+## Main features
+
+- Android 16 FBE and metadata-encryption decryption
+- Weaver, Gatekeeper and KeyMint/StrongBox support
+- Virtual A/B, dynamic partitions and recovery partition aliases
+- Automatic TWRP restore after a ROM flash
+- MTP, ADB, touch, brightness, vibration and Wi-Fi adaptations
+- Pre-decrypt waiting, failure retry and reboot-cleanup hooks
+
+## Device documentation
+
+- [Redmi K90 / annibale](docs/xiaomi-annibale.md)
+- [Redmi K90 Pro Max / myron](docs/xiaomi-myron.md)
+- [Xiaomi 17 Ultra / nezha](docs/xiaomi-nezha.md)
+- [realme Neo8 / RE6402L1](docs/realme-neo8.md)
+
+## Discussion and feedback
+
+- XDA: [POCO F8 Ultra / Redmi K90 Pro Max (myron)](https://xdaforums.com/t/twrp-3-7-1-for-poco-f8-ultra-redmi-k90-pro-max-myron-android-16-fbe-decrypt.4795272/)
+- XDA: [Xiaomi 17 Ultra (nezha)](https://xdaforums.com/t/twrp-3-7-1-for-xiaomi-17-ultra-nezha-android-16-fbe-decrypt.4795275/)
+- XDA: [realme Neo8 (RE6402L1)](https://xdaforums.com/t/twrp-3-7-1-for-realme-neo8-re6402l1-android-16-fbe-decrypt.4795276/)
+- 4PDA: [realme Neo8 discussion thread](https://4pda.to/forum/index.php?showtopic=1109949)
+- GitHub: [Issues](https://github.com/MissMyTime/twrp_device_sm8850/issues)
 
 ## Contributing
-PRs for new device adaptations are welcome:
-1. Add a complete device tree under `device/<vendor>/<codename>/`
-2. Add the corresponding device document under `docs/`
-3. For new source changes: common changes go to `patches/common/`, device-specific changes go to `patches/<device>/` with the reason documented in that directory's README
-4. Update the supported device list in the README
 
-## Thanks
-- The TeamWin Recovery Project team for the open-source TWRP base
-- The AOSP project for the Android open-source base
-- Qualcomm for open-sourcing QCOM kernel and device tree resources
+1. Add the complete device tree under `device/<vendor>/<codename>/`.
+2. Add its device document under `docs/`.
+3. Put shared changes in `patches/common/` and device-specific changes in `patches/<device>/`.
+4. Update the supported-device table and run `scripts/check-patch-isolation.sh`.
 
-## License
-Device trees and source files follow their original open-source licenses. Original content in this repository is licensed under [Apache-2.0](./LICENSE).
+## Credits
+
+- TeamWin Recovery Project
+- Android Open Source Project
+- Qualcomm open-source projects
