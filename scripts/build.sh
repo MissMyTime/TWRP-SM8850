@@ -10,7 +10,13 @@ REPO_ROOT="${SCRIPT_DIR}/.."
 CODENAME="${1:-}"
 VENDOR="${2:-}"
 TWRP_SOURCE="${TWRP_SOURCE:-$(pwd)}"
-LUNCH_TARGET="${LUNCH_TARGET:-twrp_${CODENAME}-bp2a-eng}"
+if [ -n "${LUNCH_TARGET:-}" ]; then
+    LUNCH_TARGET="$LUNCH_TARGET"
+elif [ "$CODENAME" = "myron" ]; then
+    LUNCH_TARGET="twrp_myron-myron-eng"
+else
+    LUNCH_TARGET="twrp_${CODENAME}-bp2a-eng"
+fi
 
 if [ -z "$CODENAME" ]; then
     echo "Usage: ./scripts/build.sh <codename> [vendor]"
@@ -68,11 +74,11 @@ echo ""
 if [ "$DEVICE_PATH" != "$TARGET_DEVICE_PATH" ]; then
     echo "Syncing device tree to: $TARGET_DEVICE_PATH"
     mkdir -p "$TARGET_DEVICE_PATH"
-    if command -v rsync >/dev/null 2>&1; then
-        rsync -a "$DEVICE_PATH/" "$TARGET_DEVICE_PATH/"
-    else
-        cp -a "$DEVICE_PATH/." "$TARGET_DEVICE_PATH/"
+    if ! command -v rsync >/dev/null 2>&1; then
+        echo "Error: rsync is required to synchronize the device tree exactly."
+        exit 1
     fi
+    rsync -a --delete "$DEVICE_PATH/" "$TARGET_DEVICE_PATH/"
     echo ""
 fi
 
@@ -83,7 +89,7 @@ fi
 cd "$TWRP_SOURCE"
 source build/envsetup.sh
 lunch "$LUNCH_TARGET"
-mka recoveryimage
+m recoveryimage
 
 echo ""
 echo "========================================"

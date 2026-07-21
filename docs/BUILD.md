@@ -26,6 +26,19 @@ repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aos
 repo sync -c --no-tags --no-clone-bundle -j$(nproc)
 ```
 
+## Fetch additional recovery tools
+
+The Myron recovery image includes the same nano, ncurses, logical-partition and OMAPI components as the verified image. If they are not present in the manifest checkout, clone them before applying this repository's source patches:
+
+```bash
+cd ~/android/twrp
+git clone -b lineage-22.2 https://github.com/LineageOS/android_external_nano.git external/nano
+git clone -b lineage-22.2 https://github.com/LineageOS/android_external_libncurses.git external/libncurses
+git clone -b master https://github.com/phhusson/vendor_lptools.git external/lptools
+git clone -b twrp-16.0 https://github.com/Just-TWRP/android_se_omapi.git external/se_omapi
+git clone -b twrp-16.0 https://github.com/adontoo/android_external_libmicrohttpd.git external/libmicrohttpd
+```
+
 ## Clone this repository
 
 Clone it inside the TWRP source root so the device paths resolve as expected:
@@ -40,7 +53,7 @@ git clone https://github.com/MissMyTime/twrp_device_sm8850.git
 | Device | Codename | Lunch target |
 |---|---|---|
 | Redmi K90 | `annibale` | `twrp_annibale-bp2a-eng` |
-| Redmi K90 Pro Max | `myron` | `twrp_myron-bp2a-eng` |
+| Redmi K90 Pro Max | `myron` | `twrp_myron-myron-eng` |
 | Xiaomi 17 Ultra | `nezha` | `twrp_nezha-bp2a-eng` |
 | realme Neo8 | `RE6402L1` | `twrp_RE6402L1-bp2a-eng` |
 
@@ -76,7 +89,7 @@ Example for realme Neo8:
 cd ~/android/twrp
 source build/envsetup.sh
 lunch twrp_RE6402L1-bp2a-eng
-mka recoveryimage
+m recoveryimage
 ```
 
 Output:
@@ -89,7 +102,7 @@ Replace the lunch target and product directory with the values from the table fo
 
 ## Use the unified build script
 
-The script synchronizes the selected device tree, applies the correct patch sets and builds the BP2A product target:
+The script synchronizes the selected device tree, applies the correct patch sets and builds the registered product target:
 
 ```bash
 cd ~/android/twrp
@@ -99,7 +112,7 @@ twrp_device_sm8850/scripts/build.sh RE6402L1
 The vendor directory is detected automatically. A different registered lunch target can be selected explicitly:
 
 ```bash
-LUNCH_TARGET=twrp_myron-eng twrp_device_sm8850/scripts/build.sh myron
+LUNCH_TARGET=twrp_myron-myron-eng twrp_device_sm8850/scripts/build.sh myron
 ```
 
 ## Flash

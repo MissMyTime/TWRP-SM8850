@@ -1,0 +1,40 @@
+diff --git a/partition_tools/Android.bp b/partition_tools/Android.bp
+index 3c0a976..5fd3ee4 100644
+--- a/partition_tools/Android.bp
++++ b/partition_tools/Android.bp
+@@ -99,9 +99,10 @@ cc_binary {
+     },
+ }
+ 
+-cc_binary_host {
++cc_binary {
+     name: "lpmake",
+     defaults: ["lp_defaults"],
++    host_supported: true,
+     shared_libs: [
+         "libbase",
+         "liblog",
+@@ -118,9 +119,10 @@ cc_binary_host {
+     },
+ }
+ 
+-cc_binary_host {
++cc_binary {
+     name: "lpadd",
+     defaults: ["lp_defaults"],
++    host_supported: true,
+     shared_libs: [
+         "libbase",
+         "liblog",
+@@ -172,9 +174,10 @@ cc_binary {
+     ],
+ }
+ 
+-cc_binary_host {
++cc_binary {
+     name: "lpunpack",
+     defaults: ["lp_defaults"],
++    host_supported: true,
+     shared_libs: [
+         "libbase",
+         "liblog",

@@ -30,7 +30,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # Soong namespace
 # -----------------------------------------------------------------------------
 PRODUCT_SOONG_NAMESPACES += \
-    $(DEVICE_PATH)
+    $(DEVICE_PATH) \
+    external/lptools
 
 # -----------------------------------------------------------------------------
 # Recovery tools

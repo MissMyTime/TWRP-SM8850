@@ -1,0 +1,5 @@
+# Device file                                                     TWRP source destination
+device/xiaomi/myron/recovery/root/init.recovery.hlthchrg.rc        bootable/recovery/etc/init.recovery.hlthchrg26.rc
+device/xiaomi/myron/recovery/root/init.recovery.ldconfig.rc        bootable/recovery/etc/init.recovery.ldconfig.rc
+device/xiaomi/myron/recovery/root/init.recovery.logd.rc            bootable/recovery/etc/init.recovery.logd.rc
+device/xiaomi/myron/recovery/root/init.recovery.usb.rc             bootable/recovery/etc/init.recovery.usb.rc

@@ -1,0 +1,11 @@
+diff --git a/Android.bp b/Android.bp
+index b64da75..f0d1331 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -1,3 +1,6 @@
++soong_namespace {
++}
++
+ cc_binary {
+     name: "se_omapi",
+     srcs: [

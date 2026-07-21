@@ -39,9 +39,9 @@ apply_patch_files() {
         target="${dir/_//}"
         echo "  -> Applying: $(basename "$patch_file") to $target"
         if [ -d "$TWRP_SOURCE/$target" ]; then
-            if (cd "$TWRP_SOURCE/$target" && git apply --check "$patch_file"); then
+            if (cd "$TWRP_SOURCE/$target" && git apply --check "$patch_file" 2>/dev/null); then
                 (cd "$TWRP_SOURCE/$target" && git apply "$patch_file")
-            elif (cd "$TWRP_SOURCE/$target" && git apply --reverse --check "$patch_file"); then
+            elif (cd "$TWRP_SOURCE/$target" && git apply --reverse --check "$patch_file" 2>/dev/null); then
                 echo "     Already applied."
             else
                 echo "     ERROR: patch does not match the target source tree."
@@ -67,10 +67,33 @@ apply_files() {
     fi
 }
 
+# Copy device-owned files to source paths whose upstream modules otherwise
+# overwrite the recovery-root copies during final ramdisk assembly.
+apply_mapped_files() {
+    local set_root="$1"
+    local map_file="$set_root/source-files.map"
+    [ -f "$map_file" ] || return 0
+
+    while read -r source target; do
+        [ -n "${source:-}" ] || continue
+        case "$source" in \#*) continue ;; esac
+        src="$REPO_ROOT/$source"
+        dst="$TWRP_SOURCE/$target"
+        if [ ! -f "$src" ]; then
+            echo "     ERROR: mapped source file not found: $source"
+            exit 1
+        fi
+        mkdir -p "$(dirname "$dst")"
+        echo "  -> Mapping: $source to $target"
+        cp -f "$src" "$dst"
+    done < "$map_file"
+}
+
 apply_set() {
     echo "[set] $2"
     apply_patch_files "$1"
     apply_files "$1"
+    apply_mapped_files "$1"
     echo ""
 }
 
@@ -85,11 +108,11 @@ apply_set "$REPO_ROOT/patches/common" "common (all devices)"
 
 # 2. Per-device patches: only for the requested device.
 DEVICE_SET="$(device_patch_dir "$DEVICE")"
-if [ -n "$DEVICE_SET" ] && { [ -d "$REPO_ROOT/patches/$DEVICE_SET/files" ] || [ -d "$REPO_ROOT/patches/$DEVICE_SET/patches" ]; }; then
+if [ -n "$DEVICE_SET" ] && { [ -d "$REPO_ROOT/patches/$DEVICE_SET/files" ] || [ -d "$REPO_ROOT/patches/$DEVICE_SET/patches" ] || [ -f "$REPO_ROOT/patches/$DEVICE_SET/source-files.map" ]; }; then
     apply_set "$REPO_ROOT/patches/$DEVICE_SET" "device-specific: $DEVICE_SET"
 else
     echo "No device-specific patches for '${DEVICE:-unknown}'."
-    echo "(myron/annibale intentionally have none; see patches/<device>/README.md)"
+    echo "(see patches/<device>/README.md)"
     echo ""
 fi
 

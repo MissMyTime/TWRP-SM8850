@@ -14,7 +14,7 @@ This repository contains four complete device trees and the TWRP source changes 
 | Vendor | Device | Codename | Platform | Lunch target | Security backend | Status |
 |---|---|---|---|---|---|---|
 | Xiaomi | Redmi K90 | `annibale` | `sun` | `twrp_annibale-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | Supported |
-| Xiaomi | Redmi K90 Pro Max | `myron` | `sm8850 / canoe` | `twrp_myron-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | Supported |
+| Xiaomi | Redmi K90 Pro Max | `myron` | `sm8850 / canoe` | `twrp_myron-myron-eng` | QTI KeyMint + NXP StrongBox/Weaver | Supported |
 | Xiaomi | Xiaomi 17 Ultra | `nezha` | `sm8850 / canoe` | `twrp_nezha-bp2a-eng` | QTI KeyMint + Thales/Goodix components | Supported |
 | realme | realme Neo8 | `RE6402L1` | `canoe` | `twrp_RE6402L1-bp2a-eng` | QTI KeyMint + TMS/SPU Weaver | Supported |
 
@@ -61,8 +61,8 @@ Manual build:
 ```bash
 cd ~/android/twrp
 source build/envsetup.sh
-lunch twrp_myron-bp2a-eng
-mka recoveryimage
+lunch twrp_myron-myron-eng
+m recoveryimage
 ```
 
 Or use the unified build script. It detects the vendor directory, synchronizes the selected device tree, applies the matching patches and starts the build:
@@ -75,7 +75,7 @@ twrp_device_sm8850/scripts/build.sh myron
 Set `LUNCH_TARGET` to select the lunch target explicitly:
 
 ```bash
-LUNCH_TARGET=twrp_myron-bp2a-eng twrp_device_sm8850/scripts/build.sh myron
+LUNCH_TARGET=twrp_myron-myron-eng twrp_device_sm8850/scripts/build.sh myron
 ```
 
 ## Flashing

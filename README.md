@@ -15,7 +15,7 @@
 | 厂商 | 设备 | 代号 | 平台 | Lunch target | 安全后端 | 状态 |
 |---|---|---|---|---|---|---|
 | Xiaomi | Redmi K90 | `annibale` | `sun` | `twrp_annibale-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | 已适配 |
-| Xiaomi | Redmi K90 Pro Max | `myron` | `sm8850 / canoe` | `twrp_myron-bp2a-eng` | QTI KeyMint + NXP StrongBox/Weaver | 已适配 |
+| Xiaomi | Redmi K90 Pro Max | `myron` | `sm8850 / canoe` | `twrp_myron-myron-eng` | QTI KeyMint + NXP StrongBox/Weaver | 已适配 |
 | Xiaomi | Xiaomi 17 Ultra | `nezha` | `sm8850 / canoe` | `twrp_nezha-bp2a-eng` | QTI KeyMint + Thales/Goodix 组件 | 已适配 |
 | realme | realme Neo8 | `RE6402L1` | `canoe` | `twrp_RE6402L1-bp2a-eng` | QTI KeyMint + TMS/SPU Weaver | 已适配 |
 
@@ -62,8 +62,8 @@ twrp_device_sm8850/scripts/apply-patches.sh . myron
 ```bash
 cd ~/android/twrp
 source build/envsetup.sh
-lunch twrp_myron-bp2a-eng
-mka recoveryimage
+lunch twrp_myron-myron-eng
+m recoveryimage
 ```
 
 或使用统一脚本。脚本会自动识别厂商目录、同步目标设备树、应用对应补丁并开始编译：
@@ -76,7 +76,7 @@ twrp_device_sm8850/scripts/build.sh myron
 如需显式指定 lunch target，可设置 `LUNCH_TARGET`：
 
 ```bash
-LUNCH_TARGET=twrp_myron-bp2a-eng twrp_device_sm8850/scripts/build.sh myron
+LUNCH_TARGET=twrp_myron-myron-eng twrp_device_sm8850/scripts/build.sh myron
 ```
 
 ## 刷入

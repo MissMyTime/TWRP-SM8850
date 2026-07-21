@@ -23,6 +23,8 @@ Android 16 FBE / Weaver 服务等待与重试，四台设备共同使用。
 ## patches/
 
 - `bootable_recovery/0002-nullptr-crash-fix.patch`：存储分区查找失败时的空指针保护
+- `external_*/soong_namespace.patch`：隔离额外 recovery 工具的 Soong 模块命名空间
 - `system_vold/system_vold.patch`：Weaver1 服务重试
+- `system_extras/partition_tools_target_build.patch`：同时生成 recovery 使用的 `lpmake`、`lpadd` 与 `lpunpack` 目标端程序
 
 完整源码文件是 recovery 框架修改的唯一基准。设备专属的完整文件和增量补丁分别位于 `patches/neo8/` 与 `patches/nezha/`。

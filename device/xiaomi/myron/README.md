@@ -14,8 +14,8 @@
 
 ```bash
 source build/envsetup.sh
-lunch twrp_myron-bp2a-eng
-mka recoveryimage -j$(nproc)
+lunch twrp_myron-myron-eng
+m recoveryimage
 ```
 
 输出文件：
@@ -33,4 +33,3 @@ adb reboot bootloader
 fastboot flash recovery_ab recovery.img
 fastboot reboot recovery
 ```
-

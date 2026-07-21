@@ -14,7 +14,7 @@
 | Recovery partition | 104857600 bytes (100 MiB), A/B |
 | Super partition | 14495514624 bytes (13.5 GiB) |
 | Userdata / metadata | F2FS |
-| Build target | `twrp_myron-bp2a-eng` |
+| Build target | `twrp_myron-myron-eng` |
 
 ## Encryption and security services
 
@@ -40,8 +40,8 @@ Myron uses stock vold together with the common `Weaver1.cpp` compatibility chang
 ```bash
 cd ~/android/twrp
 source build/envsetup.sh
-lunch twrp_myron-bp2a-eng
-mka recoveryimage
+lunch twrp_myron-myron-eng
+m recoveryimage
 ```
 
 Output:
