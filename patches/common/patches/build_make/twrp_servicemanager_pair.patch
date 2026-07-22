@@ -1,0 +1,12 @@
+diff --git a/target/product/base_vendor.mk b/target/product/base_vendor.mk
+index 0ae53ca9fa..fdd99a50d3 100644
+--- a/target/product/base_vendor.mk
++++ b/target/product/base_vendor.mk
+@@ -25,7 +25,6 @@ PRODUCT_PACKAGES += \
+     linker.recovery \
+     otacerts.recovery \
+     recovery \
+-    servicemanager.recovery \
+     shell_and_utilities_recovery \
+     watchdogd.recovery \
+ 
