@@ -77,7 +77,29 @@ done
 for set_name in myron annibale; do
     [ ! -e "$REPO_ROOT/patches/$set_name/files/system/vold/Decrypt.cpp" ] || \
         fail "$set_name must use stock Decrypt.cpp"
+    [ ! -e "$REPO_ROOT/patches/$set_name/files/system/vold/KeyStorage.cpp" ] || \
+        fail "$set_name must use stock KeyStorage.cpp"
+    if [ -d "$REPO_ROOT/patches/$set_name/patches/system_vold" ] && \
+            find "$REPO_ROOT/patches/$set_name/patches/system_vold" -type f -print -quit | grep -q .; then
+        fail "$set_name must not carry private system/vold patches"
+    fi
 done
+
+for file in \
+    prebuilt/odm/bin/hw/android.hardware.weaver-service.thales \
+    prebuilt/vendor_dlkm/lib/modules/stm_st54se_gpio.ko \
+    recovery/root/sbin/android.hardware.weaver-service-thales-recovery; do
+    [ -s "$REPO_ROOT/device/xiaomi/nezha/$file" ] || \
+        fail "missing Nezha July 15 fix file: $file"
+done
+
+grep -q 'normal_590' "$REPO_ROOT/device/xiaomi/nezha/recovery/root/system/bin/nezha-goodix-gate.sh" || \
+    fail "Nezha normal route is missing"
+grep -q 'leica_597' "$REPO_ROOT/device/xiaomi/nezha/recovery/root/system/bin/nezha-goodix-gate.sh" || \
+    fail "Nezha Leica route is missing"
+grep -q 'Recovery must never persist a KeyMint-upgraded blob' \
+    "$REPO_ROOT/patches/nezha/files/system/vold/KeyStorage.cpp" || \
+    fail "Nezha key-upgrade write-back protection is missing"
 
 for device in myron annibale; do
     prop="$REPO_ROOT/device/xiaomi/$device/system.prop"
@@ -90,10 +112,11 @@ while IFS= read -r patch; do
     git apply --numstat "$patch" >/dev/null
 done < <(find "$REPO_ROOT/patches" -type f -name '*.patch' -print)
 
-if grep -RniE '^[[:space:]]*fastboot[[:space:]]+(flash[[:space:]]+recovery[[:space:]]|boot[[:space:]]+recovery\.img)' \
+if grep -RniE 'recovery_ab|^[[:space:]]*fastboot[[:space:]]+(flash[[:space:]]+recovery[[:space:]]|boot[[:space:]]+recovery\.img)' \
         "$REPO_ROOT" --include='*.md' --include='*.sh' \
+        --exclude='check-patch-isolation.sh' \
         --exclude-dir=.git; then
-    fail "non-A/B recovery flashing instructions found"
+    fail "invalid or non-slotted recovery flashing instructions found"
 fi
 
 bash -n "$REPO_ROOT/scripts/apply-patches.sh"

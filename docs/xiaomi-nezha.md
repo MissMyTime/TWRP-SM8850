@@ -37,6 +37,8 @@ The routes use separate startup timing and retry limits before credential verifi
 
 ## Final decryption fixes
 
+The following fixes are retained from the final July 15, 2026 Nezha update:
+
 - Thales Weaver recovery service and supporting libraries
 - `stm_st54se_gpio.ko` for ST54 secure-element access
 - ST54 DAC/SELog safety handling
@@ -70,9 +72,12 @@ twrp_device_sm8850/scripts/build.sh nezha
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
+
+Use `--slot=a` when `current-slot` reports `a`.
 
 `fastboot boot recovery.img` is not supported because the generated recovery image is ramdisk-only.
 

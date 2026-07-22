@@ -12,9 +12,10 @@
 sudo apt update
 sudo apt install -y git-core gnupg flex bison build-essential zip curl \
     zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 \
-    libncurses5-dev lib32ncurses5-dev x11proto-core-dev libx11-dev \
+    libncurses-dev lib32ncurses-dev x11proto-core-dev libx11-dev \
     lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig \
-    repo bc ccache rsync
+    python3 python3-pip repo bc ccache rsync libssl-dev \
+    liblz4-tool lz4 zstd
 ```
 
 ## Initialize the TWRP source tree
@@ -121,11 +122,12 @@ Confirm the codename, unlock the bootloader and back up important data first.
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
 
-All four device trees use A/B recovery partitions. They also set `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true`, so the generated image is ramdisk-only and the kernel remains in `vendor_boot`. Most affected bootloaders cannot temporarily boot this image with `fastboot boot recovery.img`.
+The example assumes slot `b`; use `--slot=a` when `current-slot` reports `a`. All four device trees use A/B recovery partitions. They also set `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true`, so the generated image is ramdisk-only and the kernel remains in `vendor_boot`. Most affected bootloaders cannot temporarily boot this image with `fastboot boot recovery.img`.
 
 ## Troubleshooting
 

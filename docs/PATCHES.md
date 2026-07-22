@@ -45,7 +45,7 @@ Each `patches/<set>/files/` directory contains complete modified source files in
 
 ### `patches/common/files/bootable/recovery/`
 
-Contains the full modified recovery framework used for SM8850 devices, including:
+Contains the full modified recovery framework used by the supported SM8750/SM8850 devices, including:
 - Core recovery logic (`partition.cpp`, `partitionmanager.cpp`, `twrp.cpp`, `twrp-functions.cpp`)
 - GUI framework (`action.cpp`, `gui.cpp`, `theme/`)
 - Build system extension points (`Android.mk`, `libguitwrp_defaults.go`)

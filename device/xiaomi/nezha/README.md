@@ -5,8 +5,9 @@
 ## 当前状态
 
 - 基础功能：可启动 TWRP，触摸、亮度、解密、MTP、ADB、振动均已适配。
-- 分区形态：独立 recovery 分区。
+- 分区形态：独立 A/B recovery 分区。
 - 目标系统：HyperOS 3 / Android 16，FBE metadata 加密，动态分区，Virtual A/B。
+- 保留 2026-07-15 的 Nezha 最终解密修复：双路线启动时序、Goodix/Thales 组件、ST54 支持和密钥升级写回保护。
 
 ## 构建说明
 
@@ -15,7 +16,7 @@
 ```bash
 source build/envsetup.sh
 lunch twrp_nezha-bp2a-eng
-mka recoveryimage -j$(nproc)
+m recoveryimage
 ```
 
 输出文件：
@@ -30,7 +31,9 @@ out/target/product/nezha/recovery.img
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
 
+如果当前槽位为 `a`，请将 `--slot=b` 改为 `--slot=a`。

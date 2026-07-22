@@ -148,13 +148,18 @@ Output: `out/target/product/RE6402L1/recovery.img`
 ## Flash
 
 ```bash
-fastboot flash recovery_ab recovery.img
+adb reboot bootloader
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
+fastboot reboot recovery
 ```
+
+Use `--slot=a` when `current-slot` reports `a`.
 
 > **Note:** `fastboot boot recovery.img` (temporary boot) is **not supported** on this
 > device. The recovery image is ramdisk-only (kernel is in `vendor_boot`); most
 > SM8850 bootloaders will reject booting it directly. Flash the A/B recovery
-> partition with `recovery_ab`; temporary boot is not supported.
+> partition for the selected slot; temporary boot is not supported.
 
 ## Known Issues / Notes
 

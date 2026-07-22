@@ -1,4 +1,4 @@
-# SM8850 / Android 16 TWRP Device Trees and Source Patches
+# Qualcomm SM8750 / SM8850 Android 16 TWRP Device Trees and Source Patches
 
 > TWRP 3.7.1 device trees for recent Xiaomi and realme platforms
 
@@ -18,7 +18,7 @@ This repository contains four complete device trees and the TWRP source changes 
 | Xiaomi | Xiaomi 17 Ultra | `nezha` | `sm8850 / canoe` | `twrp_nezha-bp2a-eng` | QTI KeyMint + Thales/Goodix components | Supported |
 | realme | realme Neo8 | `RE6402L1` | `canoe` | `twrp_RE6402L1-bp2a-eng` | QTI KeyMint + TMS/SPU Weaver | Supported |
 
-All four devices use A/B recovery partitions. The generated `recovery.img` is ramdisk-only and should be flashed to `recovery_ab`; temporary boot with `fastboot boot recovery.img` is not recommended.
+All four devices use A/B recovery partitions. The generated `recovery.img` is ramdisk-only and should be flashed to `recovery` for the current slot; temporary boot with `fastboot boot recovery.img` is not recommended.
 
 ## Quick start
 
@@ -84,9 +84,12 @@ Verify the device codename, unlock the bootloader and back up important data bef
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
+
+The example assumes slot `b`. Use `--slot=a` when `current-slot` reports `a`. Flashing only the current slot leaves the other slot available as a fallback.
 
 Build output is written to `out/target/product/<codename>/recovery.img`.
 
@@ -135,7 +138,7 @@ See [PATCHES.md](docs/PATCHES.md) for details. The Patch isolation workflow chec
 
 - Android 16 FBE and metadata-encryption decryption
 - Weaver, Gatekeeper and KeyMint/StrongBox support
-- Virtual A/B, dynamic partitions and recovery partition aliases
+- Virtual A/B, dynamic partitions and A/B recovery partitions
 - Automatic TWRP restore after a ROM flash
 - MTP, ADB, touch, brightness, vibration and Wi-Fi adaptations
 - Pre-decrypt waiting, failure retry and reboot-cleanup hooks

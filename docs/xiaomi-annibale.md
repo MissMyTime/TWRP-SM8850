@@ -59,9 +59,12 @@ twrp_device_sm8850/scripts/build.sh annibale
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
+
+Use `--slot=a` when `current-slot` reports `a`.
 
 `fastboot boot recovery.img` is not supported because the generated recovery image is ramdisk-only.
 

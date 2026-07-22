@@ -1,4 +1,4 @@
-# SM8850 / Android 16 TWRP 设备树与源码补丁
+# Qualcomm SM8750 / SM8850 Android 16 TWRP 设备树与源码补丁
 
 > 面向 Xiaomi 与 realme 新平台设备的 TWRP 3.7.1 / Android 16 适配仓库
 
@@ -19,7 +19,7 @@
 | Xiaomi | Xiaomi 17 Ultra | `nezha` | `sm8850 / canoe` | `twrp_nezha-bp2a-eng` | QTI KeyMint + Thales/Goodix 组件 | 已适配 |
 | realme | realme Neo8 | `RE6402L1` | `canoe` | `twrp_RE6402L1-bp2a-eng` | QTI KeyMint + TMS/SPU Weaver | 已适配 |
 
-所有设备均使用 A/B recovery 分区。生成的 `recovery.img` 为 ramdisk-only 镜像，应刷入 `recovery_ab`，不建议使用 `fastboot boot recovery.img` 临时启动。
+所有设备均使用 A/B recovery 分区。生成的 `recovery.img` 为 ramdisk-only 镜像，应按当前槽位刷入 `recovery`，不建议使用 `fastboot boot recovery.img` 临时启动。
 
 ## 快速开始
 
@@ -85,9 +85,12 @@ LUNCH_TARGET=twrp_myron-myron-eng twrp_device_sm8850/scripts/build.sh myron
 
 ```bash
 adb reboot bootloader
-fastboot flash recovery_ab recovery.img
+fastboot getvar current-slot
+fastboot --slot=b flash recovery recovery.img
 fastboot reboot recovery
 ```
+
+示例中的当前槽位为 `b`；如果查询结果为 `a`，请将 `--slot=b` 改为 `--slot=a`。建议先只刷当前槽位，另一槽保留作回退。
 
 不同机型的输出路径为 `out/target/product/<codename>/recovery.img`。
 
@@ -136,7 +139,7 @@ twrp_device_sm8850/
 
 - Android 16 FBE 与 metadata encryption 解密
 - Weaver、Gatekeeper、KeyMint/StrongBox 支持
-- Virtual A/B、动态分区和 recovery 分区别名
+- Virtual A/B、动态分区和 A/B recovery 分区
 - 刷入 ROM 后自动恢复 TWRP
 - MTP、ADB、触摸、亮度、振动和 Wi-Fi 适配
 - 解密前等待、失败重试和重启清理钩子
