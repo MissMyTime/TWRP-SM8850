@@ -85,11 +85,68 @@ fi
 # Apply source changes
 "$SCRIPT_DIR/apply-patches.sh" "$TWRP_SOURCE" "$CODENAME"
 
+if [ "$CODENAME" = "myron" ]; then
+    for file in Decrypt.cpp KeyStorage.cpp; do
+        expected="$REPO_ROOT/patches/myron/files/system/vold/$file"
+        applied="$TWRP_SOURCE/system/vold/$file"
+        if ! cmp -s "$expected" "$applied"; then
+            echo "Error: Myron system/vold source is not the pinned device version: $file"
+            exit 1
+        fi
+    done
+
+    if ! cmp -s \
+            "$REPO_ROOT/patches/common/files/bootable/recovery/partitionmanager.cpp" \
+            "$TWRP_SOURCE/bootable/recovery/partitionmanager.cpp"; then
+        echo "Error: Myron recovery source contains a device-specific partition manager override."
+        exit 1
+    fi
+
+    if grep -q 'setRecoveryKeyMintEnvironment\|/tmp/keymaster_key_blob' \
+            "$TWRP_SOURCE/system/vold/Decrypt.cpp" \
+            "$TWRP_SOURCE/system/vold/KeyStorage.cpp"; then
+        echo "Error: unsafe Myron key handling was found after patch application."
+        exit 1
+    fi
+
+    grep -q 'usePersistentKeystoreDatabase' \
+        "$TWRP_SOURCE/system/vold/Decrypt.cpp" || {
+        echo "Error: Myron persistent keystore binding is missing."
+        exit 1
+    }
+    grep -q 'void copySqliteDb() {}' \
+        "$TWRP_SOURCE/system/vold/Decrypt.cpp" || {
+        echo "Error: Myron startup keystore hook must remain non-writing."
+        exit 1
+    }
+    grep -q 'rename(upgraded_blob_file.c_str(), blob_file.c_str())' \
+        "$TWRP_SOURCE/system/vold/KeyStorage.cpp" || {
+        echo "Error: Myron upgraded key commit is missing."
+        exit 1
+    }
+    grep -q 'setprop sys.usb.config twrp_mtp_adb' \
+        "$TWRP_SOURCE/bootable/recovery/partitionmanager.cpp" || {
+        echo "Error: Myron MTP/ADB composite configuration is missing."
+        exit 1
+    }
+fi
+
 # Build
 cd "$TWRP_SOURCE"
 source build/envsetup.sh
 lunch "$LUNCH_TARGET"
 m recoveryimage
+
+RECOVERY_ROOT="$TWRP_SOURCE/out/target/product/$CODENAME/recovery/root"
+RECOVERY_INIT="$RECOVERY_ROOT/system/etc/init/hw/init.rc"
+if [ ! -s "$RECOVERY_INIT" ]; then
+    echo "Error: recovery image is missing /system/etc/init/hw/init.rc."
+    exit 1
+fi
+if ! cmp -s "$TWRP_SOURCE/bootable/recovery/etc/init.rc" "$RECOVERY_INIT"; then
+    echo "Error: installed recovery init.rc does not match the TWRP source file."
+    exit 1
+fi
 
 echo ""
 echo "========================================"

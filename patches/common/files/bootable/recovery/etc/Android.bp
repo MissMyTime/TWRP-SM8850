@@ -1,0 +1,7 @@
+prebuilt_etc {
+    name: "init_recovery.rc",
+    src: "init.rc",
+    recovery: true,
+    sub_dir: "init/hw",
+    filename: "init.rc",
+}

@@ -26,7 +26,7 @@
 | Gatekeeper | QTI vendor service |
 | FBE policy | fscrypt policy v2 with wrapped keys |
 
-Myron uses stock vold together with the common `Weaver1.cpp` compatibility change. It does not apply the Neo8 or Nezha KeyMint environment implementations.
+Myron uses a pinned vold pair together with the common `Weaver1.cpp` compatibility change. It keeps the normal KeyMint environment, binds keystore2 to the persistent `/data/misc/keystore` directory only after `/data` is mounted, and commits an upgraded key blob to its original directory before returning. It does not apply the Neo8 or Nezha KeyMint environment implementations.
 
 ## Partition handling
 
@@ -74,4 +74,4 @@ Use `--slot=a` when `current-slot` reports `a`.
 - `TW_NO_AUTO_DECRYPT := true`: start decryption manually from TWRP when required.
 - The device tree includes Wi-Fi, MTP, ADB, touch, brightness and haptics support.
 - CPU frequency scaling defaults to `schedutil`; set `recovery.perf.mode=1` for `performance` and `0` to return to `schedutil`.
-- Keep Myron on stock vold; do not apply the Neo8 or Nezha `Decrypt.cpp`/`KeyStorage.cpp` pair.
+- Keep Myron on its pinned `Decrypt.cpp`/`KeyStorage.cpp` pair; do not apply the Neo8 or Nezha vold implementation.

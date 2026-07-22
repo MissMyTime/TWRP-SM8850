@@ -3205,8 +3205,7 @@ bool TWPartitionManager::Enable_MTP(void) {
 				"ln -s /config/usb_gadget/g1/functions/ffs.adb /config/usb_gadget/g1/configs/b.1/f2; ";
 			std::string cmd =
 				"sh -c '"
-				"setprop ctl.start adbd; "
-				"setprop sys.usb.config mtp,adb; "
+				"setprop sys.usb.config twrp_mtp_adb; "
 				"echo none > /config/usb_gadget/g1/UDC 2>/dev/null || true; "
 				"rm -f /config/usb_gadget/g1/configs/b.1/function0 "
 				"/config/usb_gadget/g1/configs/b.1/function1 "
@@ -3218,7 +3217,6 @@ bool TWPartitionManager::Enable_MTP(void) {
 				"echo " + product + " > /config/usb_gadget/g1/idProduct; "
 				+ functions +
 				"echo " + std::string(controller) + " > /config/usb_gadget/g1/UDC; "
-				"setprop sys.usb.config mtp,adb; "
 				"setprop sys.usb.state mtp,adb; "
 				"setprop twrp.usb.mtp_configured 1"
 				"'";

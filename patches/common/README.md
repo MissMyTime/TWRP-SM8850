@@ -5,7 +5,7 @@
 ## files/bootable/recovery/
 
 - `twinstall.cpp`：Virtual A/B 槽位检测与 recovery 自动恢复
-- `partition.cpp` / `partitionmanager.cpp`：动态分区、FBE 与存储处理
+- `partition.cpp` / `partitionmanager.cpp`：动态分区、FBE、存储处理及 `twrp_mtp_adb` 组合模式
 - `twrp.cpp` / `twrp-functions.cpp`：启动、重启和通用设备钩子
 - `gui/`：通用界面、语言和网络支持
 - `prebuilt/Android.mk`：公共预编译文件打包规则
@@ -27,4 +27,6 @@ Android 16 FBE / Weaver 服务等待与重试，四台设备共同使用。
 - `system_vold/system_vold.patch`：Weaver1 服务重试
 - `system_extras/partition_tools_target_build.patch`：同时生成 recovery 使用的 `lpmake`、`lpadd` 与 `lpunpack` 目标端程序
 
-完整源码文件是 recovery 框架修改的唯一基准。设备专属的完整文件和增量补丁分别位于 `patches/neo8/` 与 `patches/nezha/`。
+完整源码文件是 recovery 框架修改的唯一基准。设备专属的完整文件和增量补丁位于对应的 `patches/<device>/` 目录。
+
+Neo8 使用不同的 MTP configfs 切换，由 `patches/neo8/patches/bootable_recovery/mtp_composite.patch` 单独应用，不进入其他设备。

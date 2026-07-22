@@ -11,6 +11,7 @@
 - `files/system/vold/Decrypt.cpp`：KeyMint 环境压制、persist 兼容挂载、TMS Weaver 重启与 keystore2 同步。
 - `files/system/vold/KeyStorage.cpp`：`KM_TAG_FBE_ICE` 与升级写回保护。
 - `files/bootable/recovery/`：Neo8 专用 DRM、init 与主题构建覆盖。
+- `patches/bootable_recovery/mtp_composite.patch`：Neo8 专用的标准 `mtp,adb` configfs 切换。
 - `patches/bootable_recovery/ui_device_overrides.patch`：Neo8 的直接重启、WLAN 布局和动态 system 大小规则。
 - `patches/system_vold/key_storage_recovery_safety.patch`：KeyStorage 改动的 diff 形式。
 

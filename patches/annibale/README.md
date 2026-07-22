@@ -2,6 +2,6 @@
 
 本机**不需要** `system/vold` 补丁，此目录仅作占位说明。
 
-原因与 myron 相同：annibale 的默认 KeyMint 使用 QTI 服务，StrongBox/Weaver 使用 NXP 后端。KeyMint 环境值取自 vendor 属性，recovery 侧伪装版本号不会触发密钥升级。原版 vold + `patches/common` 的 Weaver1.cpp 即为已验证的稳定组合。
+annibale 的默认 KeyMint 使用 QTI 服务，StrongBox/Weaver 使用 NXP 后端。该设备当前保留已经验证的原版 vold 与 `patches/common` 的 Weaver1.cpp 组合。
 
 注意：请勿把 `patches/nezha` 或 `patches/neo8` 的 vold 文件混入本机构建。

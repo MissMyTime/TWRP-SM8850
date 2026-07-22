@@ -91,9 +91,10 @@ apply_mapped_files() {
 
 apply_set() {
     echo "[set] $2"
-    apply_patch_files "$1"
+    # Exact files establish the selected device baseline before incremental patches.
     apply_files "$1"
     apply_mapped_files "$1"
+    apply_patch_files "$1"
     echo ""
 }
 

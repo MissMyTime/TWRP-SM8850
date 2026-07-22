@@ -128,7 +128,8 @@ twrp_device_sm8850/
 ## Patch scope
 
 - `patches/common`: shared recovery framework, partition handling, UI, reboot and Weaver extension points.
-- `patches/myron` and `patches/annibale`: stock vold; no KeyMint environment switching from another device.
+- `patches/myron`: pinned vold baseline with persistent keystore access and durable upgraded-key commits; no KeyMint environment switching.
+- `patches/annibale`: stock vold; no KeyMint environment switching from another device.
 - `patches/nezha`: Xiaomi 17 Ultra KeyMint environment and key-storage protection.
 - `patches/neo8`: realme Neo8 TMS/SPU, OPlus Weaver, DRM, init and KeyMint changes.
 

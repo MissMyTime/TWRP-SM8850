@@ -129,7 +129,8 @@ twrp_device_sm8850/
 ## 补丁划分
 
 - `patches/common`：公共 recovery 框架、分区处理、界面、重启和 Weaver 扩展点。
-- `patches/myron`、`patches/annibale`：保留 stock vold，不应用其他设备的 KeyMint 环境切换。
+- `patches/myron`：固定已验证的 vold 基线，确保 keystore 数据库与升级密钥落盘，不进行 KeyMint 环境切换。
+- `patches/annibale`：保留 stock vold，不应用其他设备的 KeyMint 环境切换。
 - `patches/nezha`：Xiaomi 17 Ultra 的 KeyMint 环境与密钥存储保护。
 - `patches/neo8`：realme Neo8 的 TMS/SPU、OPlus Weaver、DRM、init 与 KeyMint 修改。
 

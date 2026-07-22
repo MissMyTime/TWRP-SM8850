@@ -5,7 +5,7 @@ This document describes the purpose of each source modification under `patches/`
 Patches are grouped by scope:
 
 - `patches/common/` — applied to **all four devices**. Recovery framework changes plus the Weaver retry adjustment.
-- `patches/<device>/` — applied **only** when building that device. `neo8` contains its recovery framework and KeyMint overrides; `nezha` contains its KeyMint implementation. `myron` and `annibale` run stock vold and need none.
+- `patches/<device>/` — applied **only** when building that device. `neo8` contains its recovery framework and KeyMint overrides; `nezha` contains its KeyMint implementation; `myron` pins its validated vold pair; `annibale` keeps stock vold.
 
 `scripts/apply-patches.sh <twrp-source> <codename>` always applies `common` first, then the codename's own directory.
 
@@ -28,6 +28,10 @@ Patches are grouped by scope:
 ### `patches/neo8/patches/bootable_recovery/ui_device_overrides.patch`
 
 Neo8-only direct reboot flow, WLAN layout coordinates and dynamic system-size rule. The Neo8 DRM implementation, recovery init files and GUI build file are also stored under `patches/neo8/files/bootable/recovery/`.
+
+### `patches/neo8/patches/bootable_recovery/mtp_composite.patch`
+
+Neo8-only standard `mtp,adb` configfs switching. Other devices keep the verified `twrp_mtp_adb` composite path from the common recovery source.
 
 ### `patches/neo8/patches/system_vold/key_storage_recovery_safety.patch`
 
@@ -56,11 +60,15 @@ Device-specific implementations are not stored in the common file set. Recovery 
 
 Weaver HAL retry/wait adjustment, needed by all four devices regardless of secure-element stack.
 
+### `patches/myron/files/system/vold/`
+
+`Decrypt.cpp` + `KeyStorage.cpp`: keeps the normal Myron KeyMint environment, binds the mounted `/data/misc/keystore` directory to the recovery keystore2 working directory before credential decryption, and aborts before key access if that setup fails. An upgraded vold key blob is committed atomically to its original directory and the directory is synchronized before returning.
+
 ### `patches/neo8/files/system/vold/` and `patches/nezha/files/system/vold/`
 
 `Decrypt.cpp` + `KeyStorage.cpp`: before decryption, pin the KeyMint environment (OS version / OS patch level / vendor patch level) to the installed system's real values, so the recovery's spoofed platform version (`99.87.36` / `2099-12-31`) is not treated as a newer environment that would trigger a KeyMint key upgrade on every boot. Values can be overridden via `twrp.keymint.osver/ospatch/venpatch`.
 
-**Do not apply these to myron/annibale.** Their default KeyMint services are QTI, while StrongBox/Weaver use NXP backends. The default KeyMint environment comes from vendor properties, so the spoofed recovery version never reaches it; this environment-switching logic would only invent inconsistent environments there.
+**Do not apply these to myron/annibale.** Their default KeyMint services are QTI, while StrongBox/Weaver use NXP backends. Myron has its own non-switching safety baseline; Annibale retains its validated stock vold path.
 
 ## How to Apply
 
@@ -69,4 +77,4 @@ Use the provided script:
 ./scripts/apply-patches.sh /path/to/twrp-source <codename>
 ```
 
-This will first attempt to apply git patches from `patches/common/patches/` (and the device set, if any), then copy any files from the corresponding `files/` directories as fallback/exact replacement.
+For each set, the script first copies its maintained full files to establish an exact baseline, then applies any incremental Git patches. The common set is completed before the selected device set.

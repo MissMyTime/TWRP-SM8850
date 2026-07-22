@@ -77,10 +77,10 @@ twrp_device_sm8850/scripts/apply-patches.sh . <codename>
 
 The codename may be `myron`, `annibale`, `nezha`, `RE6402L1` or `neo8`. The script applies the common set first, then only the selected device set:
 
-1. Apply Git-format patches when the target source repository matches.
-2. Copy the maintained full source files to produce the exact expected tree.
+1. Copy the maintained full source files to establish the exact expected tree.
+2. Apply Git-format incremental patches when the target source repository matches.
 
-Myron and Annibale intentionally use stock vold plus the common `Weaver1.cpp`. Nezha and Neo8 each carry a separate device-specific vold implementation.
+Myron uses a pinned non-switching vold pair that keeps keystore2 on the persistent database during decryption and commits upgraded blobs to their original directory. Annibale keeps stock vold. Nezha and Neo8 each carry a separate device-specific vold implementation.
 
 ## Build manually
 

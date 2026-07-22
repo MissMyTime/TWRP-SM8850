@@ -74,7 +74,7 @@ for set_name in neo8 nezha; do
         fail "$set_name KeyMint implementation is missing"
 done
 
-for set_name in myron annibale; do
+for set_name in annibale; do
     [ ! -e "$REPO_ROOT/patches/$set_name/files/system/vold/Decrypt.cpp" ] || \
         fail "$set_name must use stock Decrypt.cpp"
     [ ! -e "$REPO_ROOT/patches/$set_name/files/system/vold/KeyStorage.cpp" ] || \
@@ -84,6 +84,39 @@ for set_name in myron annibale; do
         fail "$set_name must not carry private system/vold patches"
     fi
 done
+
+for file in Decrypt.cpp KeyStorage.cpp; do
+    [ -f "$REPO_ROOT/patches/myron/files/system/vold/$file" ] || \
+        fail "missing Myron system/vold baseline: $file"
+done
+
+assert_no_match \
+    'setRecoveryKeyMintEnvironment|twrp\.keymint|stock_environment|/tmp/keymaster_key_blob' \
+    "$REPO_ROOT/patches/myron/files/system/vold"
+
+grep -q 'usePersistentKeystoreDatabase' \
+    "$REPO_ROOT/patches/myron/files/system/vold/Decrypt.cpp" || \
+    fail "Myron persistent keystore binding is missing"
+grep -q 'void copySqliteDb() {}' \
+    "$REPO_ROOT/patches/myron/files/system/vold/Decrypt.cpp" || \
+    fail "Myron startup keystore hook must remain non-writing"
+grep -q 'mount(source, target, nullptr, MS_BIND, nullptr)' \
+    "$REPO_ROOT/patches/myron/files/system/vold/Decrypt.cpp" || \
+    fail "Myron persistent keystore bind mount is missing"
+grep -q 'rename(upgraded_blob_file.c_str(), blob_file.c_str())' \
+    "$REPO_ROOT/patches/myron/files/system/vold/KeyStorage.cpp" || \
+    fail "Myron upgraded key commit is missing"
+
+grep -q 'setprop sys.usb.config twrp_mtp_adb' \
+    "$REPO_ROOT/patches/common/files/bootable/recovery/partitionmanager.cpp" || \
+    fail "common MTP/ADB composite configuration is missing"
+if grep -q 'setprop ctl.start adbd' \
+        "$REPO_ROOT/patches/common/files/bootable/recovery/partitionmanager.cpp"; then
+    fail "Neo8 MTP startup behavior must not be stored in the common set"
+fi
+grep -q 'setprop ctl.start adbd' \
+    "$REPO_ROOT/patches/neo8/patches/bootable_recovery/mtp_composite.patch" || \
+    fail "Neo8 MTP composite override is missing"
 
 for file in \
     prebuilt/odm/bin/hw/android.hardware.weaver-service.thales \
@@ -120,6 +153,10 @@ fi
 grep -q '^+99\.87\.36$' \
     "$REPO_ROOT/patches/myron/patches/cts/platform_release.patch" || \
     fail "Myron CTS platform release compatibility is missing"
+
+grep -q 'name: "init_recovery.rc"' \
+    "$REPO_ROOT/patches/common/files/bootable/recovery/etc/Android.bp" || \
+    fail "Android 16 recovery init.rc install rule is missing"
 
 if grep -RniE 'recovery_ab|^[[:space:]]*fastboot[[:space:]]+(flash[[:space:]]+recovery[[:space:]]|boot[[:space:]]+recovery\.img)' \
         "$REPO_ROOT" --include='*.md' --include='*.sh' \
